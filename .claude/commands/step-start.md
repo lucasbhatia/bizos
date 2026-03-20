@@ -1,0 +1,10 @@
+---
+name: step-start
+description: Begin a new build step with full context
+---
+
+Before starting any new step:
+1. Read CLAUDE.md to understand current project state
+2. Read the full file structure to understand what exists
+3. Run `npm run build` to make sure everything is clean
+4. Then ask me: "Ready to start Step [N]. What should I build?"

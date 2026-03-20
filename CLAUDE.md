@@ -45,5 +45,15 @@ U.S. customs focus: ACE/EDI filings, 19 CFR compliance, broker supervision.
 
 ## Current Build Status
 - Phase: 1 (Foundation)
-- Current Step: Step 1 — Project Initialization
-- Completed: nothing yet
+- Current Step: Step 2
+- Completed: Step 1 — Project Initialization
+
+## Build Log
+- [2026-03-20] Step 1: Project initialization ✓ (commit 49130cd)
+
+## Build Rules
+- After EVERY step: run /step-complete to commit and update status
+- Before EVERY step: run /step-start to verify clean state
+- If something breaks: run /health-check before debugging
+- Never skip validation. Always `npm run build` before committing.
+- One step at a time. Don't combine multiple playbook steps.
