@@ -58,11 +58,14 @@ Always reference it before starting a new step.
 
 ## Current Build Status
 - Phase: 1 (Foundation)
-- Current Step: Step 2
-- Completed: Step 1 — Project Initialization
+- Current Step: Step 5
+- Completed: Step 1, Step 2, Step 3, Step 4
 
 ## Build Log
 - [2026-03-20] Step 1: Project initialization ✓ (commit 49130cd)
+- [2026-03-20] Step 2: Database schema v1 ✓ (commit 4e1ea6e)
+- [2026-03-20] Step 3: Authentication flow ✓ (commit ecdb654)
+- [2026-03-20] Step 4: Seed script ✓ (commit 2126bef)
 
 ## Build Rules
 - After EVERY step: run /step-complete to commit and update status
