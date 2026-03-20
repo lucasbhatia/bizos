@@ -13,6 +13,7 @@ import {
   Settings,
   Menu,
   X,
+  ScrollText,
 } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ const navItems: NavItem[] = [
   { label: "Clients", href: "/clients", icon: Users, roles: ["admin", "ops_manager", "broker_lead"] },
   { label: "Finance", href: "/finance", icon: DollarSign, roles: ["admin", "finance"] },
   { label: "Reports", href: "/reports", icon: BarChart3, roles: ["admin", "ops_manager", "broker_lead"] },
+  { label: "Audit Trail", href: "/audit", icon: ScrollText, roles: ["admin", "broker_lead"] },
   { label: "Settings", href: "/settings", icon: Settings, roles: ["admin"] },
 ];
 
