@@ -31,6 +31,15 @@ Always reference it before starting a new step.
 - audit_events is APPEND-ONLY. No updates, no deletes.
 - Server Components by default. "use client" only when interactive.
 
+## Commands
+- `npm run dev` — start dev server
+- `npm run build` — production build (run before every commit)
+- `npm run lint` — ESLint
+- `npm run test` — run tests (Vitest)
+- `npm run test:watch` — run tests in watch mode
+- `npx supabase` — Supabase CLI
+- `npx tsx scripts/<name>.ts` — run TypeScript scripts
+
 ## Conventions
 - TypeScript strict mode. No `any` types.
 - Zod for all runtime validation.
