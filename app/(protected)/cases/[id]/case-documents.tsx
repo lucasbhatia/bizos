@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Check, AlertCircle, Clock } from "lucide-react";
+import { DocumentUpload } from "@/components/document-upload";
 import type { DocType, ParseStatus } from "@/lib/types/database";
 
 interface Document {
@@ -57,6 +58,7 @@ export function CaseDocuments({
 
   return (
     <div className="space-y-4">
+      <DocumentUpload caseId={caseId} />
       <h3 className="text-sm font-medium text-slate-500">Required Documents</h3>
       <div className="grid gap-3">
         {requiredDocs.map((docType) => {
