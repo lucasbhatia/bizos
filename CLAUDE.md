@@ -19,6 +19,10 @@ U.S. customs focus: ACE/EDI filings, 19 CFR compliance, broker supervision.
 - AI: Anthropic Claude API (claude-sonnet-4-20250514)
 - Deploy: Vercel + Supabase
 
+## Build Playbook
+Full step-by-step build plan is in docs/BUILD_PLAYBOOK.md.
+Always reference it before starting a new step.
+
 ## Architecture Rules
 - tenant_id on EVERY table. RLS enforced. No exceptions.
 - Workflow = deterministic state machine. No free-form status changes.
