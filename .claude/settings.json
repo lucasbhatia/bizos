@@ -30,7 +30,11 @@
       "Bash(sort *)",
       "Bash(grep *)",
       "Bash(ls *)",
-      "Bash(touch *)"
+      "Bash(touch *)",
+      "Bash(cd ~/bizos*)",
+      "Bash(cd ~/bizos && git *)",
+      "Bash(cd ~/bizos && npm *)",
+      "Bash(cd ~/bizos && npx *)"
     ],
     "deny": [
       "Bash(rm -rf /)*",
