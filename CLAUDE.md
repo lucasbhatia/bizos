@@ -57,15 +57,23 @@ Always reference it before starting a new step.
 /lib/validators/ — Zod schemas
 
 ## Current Build Status
-- Phase: 1 (Foundation)
-- Current Step: Step 5
-- Completed: Step 1, Step 2, Step 3, Step 4
+- Phase: 1 COMPLETE
+- Next: Phase 2 (AI Agents Layer), Step 13
+- Completed: Steps 1–12
 
 ## Build Log
 - [2026-03-20] Step 1: Project initialization ✓ (commit 49130cd)
 - [2026-03-20] Step 2: Database schema v1 ✓ (commit 4e1ea6e)
 - [2026-03-20] Step 3: Authentication flow ✓ (commit ecdb654)
 - [2026-03-20] Step 4: Seed script ✓ (commit 2126bef)
+- [2026-03-20] Step 5: Sidebar navigation ✓ (commit 09e9885)
+- [2026-03-20] Step 6: Dashboard ✓ (commit 7cae1ed)
+- [2026-03-20] Step 7: Cases list page ✓ (commit 3daa042)
+- [2026-03-20] Step 8: Case detail page ✓ (commit bcea3b8)
+- [2026-03-20] Step 9: Document upload ✓ (commit a872c8f)
+- [2026-03-20] Step 10: Task system ✓ (commit 7568801)
+- [2026-03-20] Step 11: New case wizard ✓ (commit 641d81f)
+- [2026-03-20] Step 12: Audit trail ✓ (commit eecd124)
 
 ## Build Rules
 - After EVERY step: run /step-complete to commit and update status
