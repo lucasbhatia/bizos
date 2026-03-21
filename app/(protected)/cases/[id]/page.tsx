@@ -285,6 +285,17 @@ export default async function CaseDetailPage({
                 generated_at: string;
               }) ?? null
             }
+            sentEmails={
+              ((entryCase.metadata as Record<string, unknown>)?.sent_emails as {
+                to: string;
+                subject: string;
+                body: string;
+                event_type: string;
+                sent_at: string;
+                sent_by: string;
+                gmail_message_id?: string;
+              }[]) ?? []
+            }
           />
         </TabsContent>
 

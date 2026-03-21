@@ -58,8 +58,8 @@ Always reference it before starting a new step.
 
 ## Current Build Status
 - Phase: 2 (AI Agents Layer)
-- Phase: 2 COMPLETE
-- Next: Phase 3 (Integrations + Client Portal), Step 19
+- Phase: 3 (Integrations + Client Portal)
+- Next: Step 19
 - Completed: Steps 1–18
 
 ## Build Log
@@ -80,7 +80,7 @@ Always reference it before starting a new step.
 - [2026-03-20] Step 15: Intake agent ✓ (commit f2b7426)
 - [2026-03-20] Step 16: Classification support agent ✓ (commit 9cd3227)
 - [2026-03-20] Step 17: Ops coordinator agent ✓ (commit 84de675)
-- [2026-03-20] Step 18: Finance + Client Comms agents ✓
+- [2026-03-20] Step 18: Finance + Client Comms agents ✓ (commit 5dc3c35)
 
 ## Build Rules
 - After EVERY step: run /step-complete to commit and update status
