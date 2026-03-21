@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 
 export function ExportButton({
   searchParams,
@@ -33,8 +33,17 @@ export function ExportButton({
   }
 
   return (
-    <Button variant="outline" onClick={handleExport} disabled={loading}>
-      <Download className="mr-1 h-4 w-4" />
+    <Button
+      variant="outline"
+      onClick={handleExport}
+      disabled={loading}
+      className="shadow-sm font-medium"
+    >
+      {loading ? (
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      ) : (
+        <Download className="mr-2 h-4 w-4" />
+      )}
       {loading ? "Exporting..." : "Export CSV"}
     </Button>
   );

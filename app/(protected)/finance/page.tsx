@@ -9,6 +9,8 @@ import {
   TrendingUp,
   AlertCircle,
   CheckCircle2,
+  Plus,
+  Receipt,
 } from "lucide-react";
 
 interface SearchParams {
@@ -147,25 +149,33 @@ export default async function FinancePage({
       label: "Current",
       amount: current,
       pct: arTotal > 0 ? (current / arTotal) * 100 : 0,
-      color: "bg-green-500",
+      color: "bg-emerald-500",
+      dotColor: "bg-emerald-500",
+      textColor: "text-emerald-700",
     },
     {
       label: "1-30 days",
       amount: days30,
       pct: arTotal > 0 ? (days30 / arTotal) * 100 : 0,
-      color: "bg-yellow-500",
+      color: "bg-amber-400",
+      dotColor: "bg-amber-400",
+      textColor: "text-amber-700",
     },
     {
       label: "31-60 days",
       amount: days60,
       pct: arTotal > 0 ? (days60 / arTotal) * 100 : 0,
       color: "bg-orange-500",
+      dotColor: "bg-orange-500",
+      textColor: "text-orange-700",
     },
     {
       label: "90+ days",
       amount: days90plus,
       pct: arTotal > 0 ? (days90plus / arTotal) * 100 : 0,
       color: "bg-red-500",
+      dotColor: "bg-red-500",
+      textColor: "text-red-700",
     },
   ];
 
@@ -183,6 +193,7 @@ export default async function FinancePage({
       label: "Invoiced This Month",
       value: formatCurrency(invoicedThisMonth),
       icon: DollarSign,
+      borderColor: "border-l-blue-500",
       iconBg: "bg-blue-50",
       iconColor: "text-blue-600",
     },
@@ -190,13 +201,15 @@ export default async function FinancePage({
       label: "Collected This Month",
       value: formatCurrency(paidThisMonth),
       icon: CheckCircle2,
-      iconBg: "bg-green-50",
-      iconColor: "text-green-600",
+      borderColor: "border-l-emerald-500",
+      iconBg: "bg-emerald-50",
+      iconColor: "text-emerald-600",
     },
     {
       label: "Outstanding",
       value: formatCurrency(totalOutstanding),
       icon: TrendingUp,
+      borderColor: "border-l-slate-400",
       iconBg: "bg-slate-50",
       iconColor: "text-slate-600",
     },
@@ -204,33 +217,43 @@ export default async function FinancePage({
       label: "Overdue",
       value: formatCurrency(totalOverdue),
       icon: AlertCircle,
-      iconBg: totalOverdue > 0 ? "bg-red-50" : "bg-green-50",
-      iconColor: totalOverdue > 0 ? "text-red-600" : "text-green-600",
+      borderColor: totalOverdue > 0 ? "border-l-red-500" : "border-l-emerald-500",
+      iconBg: totalOverdue > 0 ? "bg-red-50" : "bg-emerald-50",
+      iconColor: totalOverdue > 0 ? "text-red-600" : "text-emerald-600",
     },
   ];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Finance</h1>
-          <p className="text-sm text-slate-500">
-            Invoices, payments, and accounts receivable
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100">
+            <Receipt className="h-5 w-5 text-blue-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Finance</h1>
+            <p className="text-sm text-slate-500">
+              Invoices, payments, and accounts receivable
+            </p>
+          </div>
         </div>
-        <Button asChild>
-          <Link href="/finance/new">Create Invoice</Link>
+        <Button asChild className="shadow-sm">
+          <Link href="/finance/new">
+            <Plus className="mr-2 h-4 w-4" />
+            Create Invoice
+          </Link>
         </Button>
       </div>
 
-      {/* Revenue metrics row */}
+      {/* Revenue metrics row with colored left borders */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
             <Card
               key={stat.label}
-              className="transition-all hover:-translate-y-px hover:shadow-md"
+              className={`border-l-4 ${stat.borderColor} transition-all hover:-translate-y-px hover:shadow-md`}
             >
               <CardContent className="flex items-center gap-4 p-5">
                 <div
@@ -253,40 +276,43 @@ export default async function FinancePage({
       </div>
 
       {/* AR Aging */}
-      <Card>
-        <CardHeader>
+      <Card className="shadow-sm">
+        <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Accounts Receivable Aging</CardTitle>
-            <span className="text-sm font-semibold text-slate-700">
+            <CardTitle className="text-base font-semibold text-slate-900">
+              Accounts Receivable Aging
+            </CardTitle>
+            <span className="text-sm font-bold text-slate-700">
               {formatCurrency(arTotal)} total
             </span>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-2">
           {/* Stacked bar */}
-          <div className="mb-4 flex h-4 overflow-hidden rounded-full bg-slate-100">
+          <div className="mb-5 flex h-5 overflow-hidden rounded-full bg-slate-100">
             {arBuckets.map(
               (bucket) =>
                 bucket.pct > 0 && (
                   <div
                     key={bucket.label}
-                    className={`${bucket.color} transition-all`}
+                    className={`${bucket.color} transition-all duration-500 first:rounded-l-full last:rounded-r-full`}
                     style={{ width: `${bucket.pct}%` }}
+                    title={`${bucket.label}: ${formatCurrency(bucket.amount)}`}
                   />
                 )
             )}
           </div>
 
           {/* Legend */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {arBuckets.map((bucket) => (
-              <div key={bucket.label} className="flex items-center gap-2">
-                <div className={`h-3 w-3 rounded-sm ${bucket.color}`} />
+              <div key={bucket.label} className="flex items-center gap-2.5">
+                <div className={`h-3 w-3 rounded-full ${bucket.dotColor} flex-shrink-0`} />
                 <div>
-                  <p className="text-xs font-medium text-slate-600">
+                  <p className="text-xs font-medium text-slate-500">
                     {bucket.label}
                   </p>
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className={`text-sm font-bold ${bucket.amount > 0 ? bucket.textColor : "text-slate-400"}`}>
                     {formatCurrency(bucket.amount)}
                   </p>
                 </div>
@@ -296,6 +322,7 @@ export default async function FinancePage({
         </CardContent>
       </Card>
 
+      {/* Filters */}
       <InvoicesFilters
         clients={clients ?? []}
         currentFilters={{
@@ -306,13 +333,19 @@ export default async function FinancePage({
         }}
       />
 
-      <InvoicesTable invoices={invoices ?? []} />
+      {/* Invoice Table */}
+      <Card className="shadow-sm">
+        <CardContent className="p-0">
+          <InvoicesTable invoices={invoices ?? []} />
+        </CardContent>
+      </Card>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3">
           <p className="text-sm text-slate-500">
-            Page {page} of {totalPages}
+            Page <span className="font-medium text-slate-700">{page}</span> of{" "}
+            <span className="font-medium text-slate-700">{totalPages}</span>
           </p>
           <div className="flex gap-2">
             {page > 1 && (
