@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import type { CaseStatus } from "@/lib/types/database";
 import { STATUS_COLORS, PRIORITY_COLORS } from "@/lib/types/database";
+import { OpsCheckButton } from "./ops-check-button";
 
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -246,6 +247,9 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Ops Check */}
+      <OpsCheckButton userRole={user?.role ?? "viewer"} />
 
       {/* Recent Activity */}
       <Card>

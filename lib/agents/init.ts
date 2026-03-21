@@ -3,6 +3,7 @@ import { registerEchoAgent } from './echo';
 import { registerDocumentParserAgent } from './document-parser';
 import { registerIntakeAgent } from './intake';
 import { registerClassificationAgent } from './classification';
+import { registerOpsCoordinatorAgent } from './ops-coordinator';
 
 let initialized = false;
 
@@ -13,6 +14,7 @@ export function initializeAgents(): void {
   registerDocumentParserAgent();
   registerIntakeAgent();
   registerClassificationAgent();
+  registerOpsCoordinatorAgent();
   // Future agents will be registered here
 
   initialized = true;

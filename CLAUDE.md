@@ -58,8 +58,8 @@ Always reference it before starting a new step.
 
 ## Current Build Status
 - Phase: 2 (AI Agents Layer)
-- Next: Step 16
-- Completed: Steps 1–15
+- Next: Step 17
+- Completed: Steps 1–16
 
 ## Build Log
 - [2026-03-20] Step 1: Project initialization ✓ (commit 49130cd)
@@ -77,6 +77,7 @@ Always reference it before starting a new step.
 - [2026-03-20] Step 13: Agent infrastructure ✓ (commit 910d824)
 - [2026-03-20] Step 14: Document parsing agent ✓ (commit 5521a5b)
 - [2026-03-20] Step 15: Intake agent ✓ (commit f2b7426)
+- [2026-03-20] Step 16: Classification support agent ✓ (commit 9cd3227)
 
 ## Build Rules
 - After EVERY step: run /step-complete to commit and update status
