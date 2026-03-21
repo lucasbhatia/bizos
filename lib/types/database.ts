@@ -197,6 +197,49 @@ export interface Message {
   created_at: string;
 }
 
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+
+export interface InvoiceLineItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+}
+
+export interface Invoice {
+  id: string;
+  tenant_id: string;
+  entry_case_id: string | null;
+  client_account_id: string;
+  invoice_number: string;
+  status: InvoiceStatus;
+  line_items: InvoiceLineItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  currency: string;
+  payment_terms: string | null;
+  due_date: string | null;
+  paid_at: string | null;
+  qbo_invoice_id: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceWithRelations extends Invoice {
+  client_account?: ClientAccount;
+  entry_case?: EntryCase;
+}
+
+export const INVOICE_STATUS_COLORS: Record<InvoiceStatus, string> = {
+  draft: 'bg-gray-100 text-gray-800',
+  sent: 'bg-blue-100 text-blue-800',
+  paid: 'bg-green-100 text-green-800',
+  overdue: 'bg-red-100 text-red-800',
+  cancelled: 'bg-slate-100 text-slate-500',
+};
+
 // ============================================================================
 // Joined / enriched types used in the UI
 // ============================================================================

@@ -95,6 +95,32 @@ export const markMessagesReadSchema = z.object({
   messageIds: z.array(z.string().uuid()).min(1),
 });
 
+export const invoiceStatusSchema = z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled']);
+
+export const invoiceLineItemSchema = z.object({
+  description: z.string().min(1),
+  quantity: z.number().positive(),
+  unit_price: z.number().min(0),
+  amount: z.number().min(0),
+});
+
+export const createInvoiceSchema = z.object({
+  entry_case_id: z.string().uuid().optional(),
+  client_account_id: z.string().uuid(),
+  line_items: z.array(invoiceLineItemSchema).min(1),
+  subtotal: z.number().min(0),
+  tax: z.number().min(0).default(0),
+  total: z.number().min(0),
+  currency: z.string().default('USD'),
+  payment_terms: z.string().optional(),
+  due_date: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export const updateInvoiceStatusSchema = z.object({
+  status: invoiceStatusSchema,
+});
+
 export const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -119,3 +145,5 @@ export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 export type MarkMessagesReadInput = z.infer<typeof markMessagesReadSchema>;
+export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
+export type UpdateInvoiceStatusInput = z.infer<typeof updateInvoiceStatusSchema>;
