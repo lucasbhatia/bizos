@@ -44,3 +44,12 @@ export async function authenticateApiRequest(): Promise<AuthResult | null> {
     fullName: profile.full_name,
   };
 }
+
+type UserRole = 'admin' | 'broker_lead' | 'ops_manager' | 'specialist' | 'finance' | 'viewer';
+
+/**
+ * Check if a user's role is allowed for a given set of permitted roles.
+ */
+export function hasRole(auth: AuthResult, allowedRoles: UserRole[]): boolean {
+  return allowedRoles.includes(auth.role as UserRole);
+}
