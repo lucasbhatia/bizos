@@ -1,6 +1,6 @@
 import { createClient, createServiceClient } from "./server";
 
-interface AuthResult {
+export interface AuthResult {
   userId: string;
   tenantId: string;
   role: string;
@@ -9,29 +9,20 @@ interface AuthResult {
 }
 
 /**
- * Authenticate an API route request using the session cookie.
- * Returns user profile info or null if not authenticated.
- * Uses getSession() to read from cookie + service client to fetch profile.
+ * Authenticate an API route request.
+ * Uses getUser() (validates JWT with Supabase Auth server).
  */
 export async function authenticateApiRequest(): Promise<AuthResult | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
-  let userId: string | null = null;
-
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    userId = session?.user?.id ?? null;
-  } catch {
-    return null;
-  }
-
-  if (!userId) return null;
+  const { data: { user: authUser }, error } = await supabase.auth.getUser();
+  if (error || !authUser) return null;
 
   const serviceClient = createServiceClient();
   const { data: profile } = await serviceClient
     .from("users")
     .select("id, tenant_id, role, is_licensed_broker, full_name")
-    .eq("id", userId)
+    .eq("id", authUser.id)
     .single();
 
   if (!profile) return null;
@@ -47,9 +38,6 @@ export async function authenticateApiRequest(): Promise<AuthResult | null> {
 
 type UserRole = 'admin' | 'broker_lead' | 'ops_manager' | 'specialist' | 'finance' | 'viewer';
 
-/**
- * Check if a user's role is allowed for a given set of permitted roles.
- */
 export function hasRole(auth: AuthResult, allowedRoles: UserRole[]): boolean {
   return allowedRoles.includes(auth.role as UserRole);
 }

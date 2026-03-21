@@ -140,7 +140,7 @@ export async function healthCheck(): Promise<{
   const dbStart = Date.now();
   try {
     const { createClient } = await import("@/lib/supabase/server");
-    const supabase = createClient();
+    const supabase = await createClient();
     const { error } = await supabase
       .from("tenants")
       .select("id", { count: "exact", head: true });
@@ -163,7 +163,7 @@ export async function healthCheck(): Promise<{
   const authStart = Date.now();
   try {
     const { createClient } = await import("@/lib/supabase/server");
-    const supabase = createClient();
+    const supabase = await createClient();
     // Just try to get session — this tests auth service
     await supabase.auth.getSession();
     checks.push({
@@ -184,7 +184,7 @@ export async function healthCheck(): Promise<{
   const storageStart = Date.now();
   try {
     const { createClient } = await import("@/lib/supabase/server");
-    const supabase = createClient();
+    const supabase = await createClient();
     const { error } = await supabase.storage.listBuckets();
     checks.push({
       name: "storage",

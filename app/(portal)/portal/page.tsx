@@ -90,7 +90,7 @@ export default async function PortalDashboardPage() {
   const portalUser = await getPortalUser();
   if (!portalUser) redirect("/login");
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const clientAccountId = portalUser.clientAccount.id;
 
   // Fetch active cases and recent updates

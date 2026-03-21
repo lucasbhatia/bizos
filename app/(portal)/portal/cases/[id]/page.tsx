@@ -93,7 +93,7 @@ export default async function PortalCaseDetailPage({
   const portalUser = await getPortalUser();
   if (!portalUser) redirect("/login");
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Fetch the case -- verify it belongs to this client
   const { data: entryCase } = await supabase

@@ -144,7 +144,7 @@ export function validateISF(data: ISFData): ISFValidationResult {
  * Assemble ISF data from case documents and metadata.
  */
 export async function buildISFFromCase(caseId: string): Promise<ISFData> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: entryCase } = await supabase
     .from("entry_cases")

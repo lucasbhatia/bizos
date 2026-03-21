@@ -128,7 +128,7 @@ function generateDispatchNumber(): string {
  * Create a dispatch order from case data.
  */
 export async function createDispatchOrder(caseId: string): Promise<DispatchOrder> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: entryCase } = await supabase
     .from("entry_cases")

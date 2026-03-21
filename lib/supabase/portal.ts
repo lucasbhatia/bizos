@@ -23,7 +23,7 @@ export interface PortalUser {
 }
 
 export async function getPortalUser(): Promise<PortalUser | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user: authUser },

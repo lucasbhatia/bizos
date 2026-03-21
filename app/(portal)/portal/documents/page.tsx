@@ -20,7 +20,7 @@ export default async function PortalDocumentsPage() {
   const portalUser = await getPortalUser();
   if (!portalUser) redirect("/login");
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Fetch documents across all cases for this client
   const { data: documents } = await supabase

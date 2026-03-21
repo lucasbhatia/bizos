@@ -137,7 +137,7 @@ export const CONTAINER_TYPES = [
  * Create a booking request from case data.
  */
 export async function createBookingRequest(caseId: string): Promise<BookingRequest> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: entryCase } = await supabase
     .from("entry_cases")

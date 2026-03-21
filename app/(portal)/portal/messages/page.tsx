@@ -7,7 +7,7 @@ export default async function PortalMessagesPage() {
   const portalUser = await getPortalUser();
   if (!portalUser) redirect("/login");
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Fetch all messages for this client account
   const { data: messages } = await supabase
