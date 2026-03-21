@@ -63,7 +63,6 @@ export async function POST(request: NextRequest) {
 
     if (doc.file_name.toLowerCase().endsWith('.pdf')) {
       // Dynamic import for pdf-parse (only needed server-side)
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>;
       const pdfData = await pdfParse(buffer);
       documentText = pdfData.text;
