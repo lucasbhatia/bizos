@@ -153,20 +153,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // For public routes, allow access without checking session
-  // This prevents redirect loops when cookies are malformed
+  // Public routes — always allow through, never redirect
   if (isPublicRoute) {
-    // Check if user is already logged in to redirect away from login
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/dashboard";
-        return NextResponse.redirect(url);
-      }
-    } catch {
-      // Malformed cookie on public route — just let them through
-    }
     return supabaseResponse;
   }
 
