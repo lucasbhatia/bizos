@@ -33,23 +33,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  const result = await executeAgent(
-    'finance-agent',
-    { data: { caseId: parsed.data.caseId }, trigger: 'billing_status' },
-    {
-      tenantId: profile.tenant_id,
-      userId: profile.id,
-      caseId: parsed.data.caseId,
-      triggerEvent: 'billing_status',
-    },
-    'write'
-  );
+  try {
+    const result = await executeAgent(
+      'finance-agent',
+      { data: { caseId: parsed.data.caseId }, trigger: 'billing_status' },
+      {
+        tenantId: profile.tenant_id,
+        userId: profile.id,
+        caseId: parsed.data.caseId,
+        triggerEvent: 'billing_status',
+      },
+      'write'
+    );
 
-  return NextResponse.json({
-    success: result.output.success,
-    result: result.output.result,
-    confidence: result.output.confidence,
-    logId: result.logId,
-    error: result.output.error,
-  });
+    return NextResponse.json({
+      success: result.output.success,
+      result: result.output.result,
+      confidence: result.output.confidence,
+      logId: result.logId,
+      error: result.output.error,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Finance agent invocation failed: ${message}`);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { createBookingRequest } from "@/lib/adapters/freight";
 import type { BLWorkflow, Consolidation } from "@/lib/adapters/freight";
 
@@ -6,6 +7,12 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  const supabase = createClient();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const booking = await createBookingRequest(params.id);
 

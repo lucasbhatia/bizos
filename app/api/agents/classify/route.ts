@@ -39,23 +39,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const result = await executeAgent(
-    'classification-support',
-    { data: parsed.data, trigger: 'classification_requested' },
-    {
-      tenantId: profile.tenant_id,
-      userId: profile.id,
-      caseId: parsed.data.caseId,
-      triggerEvent: 'classification_requested',
-    },
-    'regulatory'
-  );
+  try {
+    const result = await executeAgent(
+      'classification-support',
+      { data: parsed.data, trigger: 'classification_requested' },
+      {
+        tenantId: profile.tenant_id,
+        userId: profile.id,
+        caseId: parsed.data.caseId,
+        triggerEvent: 'classification_requested',
+      },
+      'regulatory'
+    );
 
-  return NextResponse.json({
-    success: result.output.success,
-    result: result.output.result,
-    confidence: result.output.confidence,
-    logId: result.logId,
-    error: result.output.error,
-  });
+    return NextResponse.json({
+      success: result.output.success,
+      result: result.output.result,
+      confidence: result.output.confidence,
+      logId: result.logId,
+      error: result.output.error,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Classification agent invocation failed: ${message}`);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

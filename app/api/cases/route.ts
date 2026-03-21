@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
   const { data: opsUsers } = await supabase
     .from("users")
     .select("id")
+    .eq("tenant_id", profile.tenant_id)
     .eq("role", "ops_manager")
     .eq("is_active", true)
     .limit(1);

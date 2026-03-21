@@ -27,21 +27,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
   }
 
-  const result = await executeAgent(
-    'ops-coordinator',
-    { data: {}, trigger: 'manual_run' },
-    {
-      tenantId: profile.tenant_id,
-      userId: profile.id,
-      triggerEvent: 'manual_run',
-    },
-    'write'
-  );
+  try {
+    const result = await executeAgent(
+      'ops-coordinator',
+      { data: {}, trigger: 'manual_run' },
+      {
+        tenantId: profile.tenant_id,
+        userId: profile.id,
+        triggerEvent: 'manual_run',
+      },
+      'write'
+    );
 
-  return NextResponse.json({
-    success: result.output.success,
-    result: result.output.result,
-    logId: result.logId,
-    error: result.output.error,
-  });
+    return NextResponse.json({
+      success: result.output.success,
+      result: result.output.result,
+      logId: result.logId,
+      error: result.output.error,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Ops coordinator invocation failed: ${message}`);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

@@ -82,32 +82,38 @@ export async function POST(request: NextRequest) {
     ? ((doc.entry_case as Record<string, unknown>).client_account as { name: string }).name
     : undefined;
 
-  const result = await executeAgent(
-    'document-parser',
-    {
-      data: {
-        documentId,
-        documentText,
-        expectedDocType: doc.doc_type,
-        clientName,
+  try {
+    const result = await executeAgent(
+      'document-parser',
+      {
+        data: {
+          documentId,
+          documentText,
+          expectedDocType: doc.doc_type,
+          clientName,
+        },
+        trigger: 'document_uploaded',
       },
-      trigger: 'document_uploaded',
-    },
-    {
-      tenantId: profile.tenant_id,
-      userId: profile.id,
-      caseId: doc.entry_case_id,
-      triggerEvent: 'document_uploaded',
-    },
-    'write'
-  );
+      {
+        tenantId: profile.tenant_id,
+        userId: profile.id,
+        caseId: doc.entry_case_id,
+        triggerEvent: 'document_uploaded',
+      },
+      'write'
+    );
 
-  return NextResponse.json({
-    success: result.output.success,
-    confidence: result.output.confidence,
-    result: result.output.result,
-    approvalRequired: result.approvalRequired,
-    logId: result.logId,
-    error: result.output.error,
-  });
+    return NextResponse.json({
+      success: result.output.success,
+      confidence: result.output.confidence,
+      result: result.output.result,
+      approvalRequired: result.approvalRequired,
+      logId: result.logId,
+      error: result.output.error,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Document parse agent invocation failed: ${message}`);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

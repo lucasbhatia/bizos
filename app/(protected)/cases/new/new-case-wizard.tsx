@@ -47,17 +47,12 @@ export function NewCaseWizard({ clients, users, businessUnits }: WizardProps) {
   // Step 2 fields
   const [assigneeId, setAssigneeId] = useState("");
   const [notes, setNotes] = useState("");
-  const [requiredDocs, setRequiredDocs] = useState<DocType[]>([]);
+  const [requiredDocs, setRequiredDocs] = useState<DocType[]>(REQUIRED_DOCS_BY_MODE["ocean"]);
 
   // Initialize required docs when mode changes
   function handleModeChange(m: TransportMode) {
     setMode(m);
     setRequiredDocs(REQUIRED_DOCS_BY_MODE[m] ?? []);
-  }
-
-  // Ensure docs are initialized on first render
-  if (requiredDocs.length === 0 && mode) {
-    setRequiredDocs(REQUIRED_DOCS_BY_MODE[mode] ?? []);
   }
 
   const specialists = users.filter(

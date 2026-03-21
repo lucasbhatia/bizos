@@ -29,12 +29,24 @@ Team Size: ${teamSize ?? 5}
 
 Provide practical, U.S. customs-specific recommendations. Include major ports if relevant to the industry focus.`;
 
-  const llmResponse = await callClaude({
-    systemPrompt: SYSTEM_PROMPT,
-    userPrompt,
-    maxTokens: 2048,
-    temperature: 0.3,
-  });
+  let llmResponse;
+  try {
+    llmResponse = await callClaude({
+      systemPrompt: SYSTEM_PROMPT,
+      userPrompt,
+      maxTokens: 2048,
+      temperature: 0.3,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      success: false,
+      result: { error: errorMessage },
+      confidence: 0,
+      citations: [],
+      error: errorMessage,
+    };
+  }
 
   let recommendations: Record<string, unknown>;
   try {

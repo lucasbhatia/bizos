@@ -59,8 +59,9 @@ export async function POST(request: NextRequest) {
 
   const { data: entryCase } = await serviceClient
     .from('entry_cases')
-    .select('metadata')
+    .select('metadata, tenant_id')
     .eq('id', caseId)
+    .eq('tenant_id', profile.tenant_id)
     .single();
 
   if (entryCase) {
@@ -106,11 +107,13 @@ export async function POST(request: NextRequest) {
   // 5. Log to audit_events
   await serviceClient.from('audit_events').insert({
     tenant_id: profile.tenant_id,
-    user_id: profile.id,
-    action: 'email_sent',
+    event_type: 'email.sent',
     entity_type: 'entry_case',
     entity_id: caseId,
-    metadata: {
+    actor_type: 'user',
+    actor_id: profile.id,
+    action: `Sent ${eventType} email to ${to}`,
+    details: {
       to,
       subject,
       event_type: eventType,

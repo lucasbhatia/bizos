@@ -9,6 +9,11 @@ export async function GET(
   try {
     const supabase = createClient();
 
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { data: entryCase } = await supabase
       .from("entry_cases")
       .select("metadata")

@@ -38,23 +38,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const result = await executeAgent(
-    'intake-agent',
-    { data: parsed.data, trigger: 'email_received' },
-    {
-      tenantId: profile.tenant_id,
-      userId: profile.id,
-      triggerEvent: 'email_received',
-    },
-    'write'
-  );
+  try {
+    const result = await executeAgent(
+      'intake-agent',
+      { data: parsed.data, trigger: 'email_received' },
+      {
+        tenantId: profile.tenant_id,
+        userId: profile.id,
+        triggerEvent: 'email_received',
+      },
+      'write'
+    );
 
-  return NextResponse.json({
-    success: result.output.success,
-    result: result.output.result,
-    confidence: result.output.confidence,
-    approvalRequired: result.approvalRequired,
-    logId: result.logId,
-    error: result.output.error,
-  });
+    return NextResponse.json({
+      success: result.output.success,
+      result: result.output.result,
+      confidence: result.output.confidence,
+      approvalRequired: result.approvalRequired,
+      logId: result.logId,
+      error: result.output.error,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Intake agent invocation failed: ${message}`);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

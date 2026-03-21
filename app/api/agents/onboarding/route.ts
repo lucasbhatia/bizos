@@ -43,24 +43,30 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await executeAgent(
-    "onboarding-agent",
-    { data: parsed.data, trigger: "tenant_onboarding" },
-    {
-      tenantId: profile.tenant_id,
-      userId: profile.id,
-      triggerEvent: "tenant_onboarding",
-    },
-    "write"
-  );
+  try {
+    const result = await executeAgent(
+      "onboarding-agent",
+      { data: parsed.data, trigger: "tenant_onboarding" },
+      {
+        tenantId: profile.tenant_id,
+        userId: profile.id,
+        triggerEvent: "tenant_onboarding",
+      },
+      "write"
+    );
 
-  return NextResponse.json({
-    success: result.output.success,
-    result: result.output.result,
-    confidence: result.output.confidence,
-    citations: result.output.citations,
-    approvalRequired: result.approvalRequired,
-    logId: result.logId,
-    error: result.output.error,
-  });
+    return NextResponse.json({
+      success: result.output.success,
+      result: result.output.result,
+      confidence: result.output.confidence,
+      citations: result.output.citations,
+      approvalRequired: result.approvalRequired,
+      logId: result.logId,
+      error: result.output.error,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(`Onboarding agent invocation failed: ${message}`);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
