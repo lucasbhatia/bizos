@@ -14,6 +14,11 @@ import { CaseClassification } from "./case-classification";
 import { CaseCommunications } from "./case-communications";
 import { CaseFiling } from "./case-filing";
 import { CaseMessages } from "./case-messages";
+import { CaseISF } from "./case-isf";
+import { CasePGA } from "./case-pga";
+import { CaseFreight } from "./case-freight";
+import { CaseDrayage } from "./case-drayage";
+import { CaseTracking } from "./case-tracking";
 import { Ship, Plane, Truck, TrainFront, AlertTriangle } from "lucide-react";
 
 const MODE_ICONS: Record<TransportMode, React.ElementType> = {
@@ -93,6 +98,10 @@ export default async function CaseDetailPage({
   const openTasks = tasks.filter((t) => t.status === "pending" || t.status === "in_progress").length;
   const completedTasks = tasks.filter((t) => t.status === "completed").length;
   const uploadedDocTypes = new Set(documents.map((d) => d.doc_type));
+  const mode = entryCase.mode_of_transport as TransportMode;
+  const isOceanOrAir = mode === "ocean" || mode === "air";
+  const isOcean = mode === "ocean";
+  const hasTrucking = mode === "ocean" || mode === "truck";
 
   return (
     <div className="space-y-6">
@@ -183,6 +192,11 @@ export default async function CaseDetailPage({
           <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="comms">Communications</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
+          {isOcean && <TabsTrigger value="isf">ISF</TabsTrigger>}
+          <TabsTrigger value="pga">PGA</TabsTrigger>
+          {isOceanOrAir && <TabsTrigger value="freight">Freight</TabsTrigger>}
+          {hasTrucking && <TabsTrigger value="drayage">Drayage</TabsTrigger>}
+          <TabsTrigger value="tracking">Tracking</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
@@ -323,6 +337,32 @@ export default async function CaseDetailPage({
             workflowEvents={workflowEvents}
             aiLogs={aiLogs}
           />
+        </TabsContent>
+
+        {isOcean && (
+          <TabsContent value="isf" className="mt-4">
+            <CaseISF caseId={entryCase.id} eta={entryCase.eta} />
+          </TabsContent>
+        )}
+
+        <TabsContent value="pga" className="mt-4">
+          <CasePGA caseId={entryCase.id} />
+        </TabsContent>
+
+        {isOceanOrAir && (
+          <TabsContent value="freight" className="mt-4">
+            <CaseFreight caseId={entryCase.id} />
+          </TabsContent>
+        )}
+
+        {hasTrucking && (
+          <TabsContent value="drayage" className="mt-4">
+            <CaseDrayage caseId={entryCase.id} />
+          </TabsContent>
+        )}
+
+        <TabsContent value="tracking" className="mt-4">
+          <CaseTracking caseId={entryCase.id} />
         </TabsContent>
       </Tabs>
     </div>
