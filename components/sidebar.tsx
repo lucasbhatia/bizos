@@ -15,6 +15,7 @@ import {
   X,
   ScrollText,
   Inbox,
+  Shield,
 } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ const navItems: NavItem[] = [
   { label: "Reports", href: "/reports", icon: BarChart3, roles: ["admin", "ops_manager", "broker_lead"] },
   { label: "Audit Trail", href: "/audit", icon: ScrollText, roles: ["admin", "broker_lead"] },
   { label: "Settings", href: "/settings", icon: Settings, roles: ["admin"] },
+  { label: "Admin", href: "/admin", icon: Shield, roles: ["admin"] },
 ];
 
 export function Sidebar({ user }: { user: UserWithTenant }) {
