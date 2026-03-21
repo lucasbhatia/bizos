@@ -6,6 +6,7 @@ import { registerClassificationAgent } from './classification';
 import { registerOpsCoordinatorAgent } from './ops-coordinator';
 import { registerFinanceAgent } from './finance';
 import { registerClientCommsAgent } from './client-comms';
+import { registerExecutiveBriefAgent } from './executive-brief';
 
 let initialized = false;
 
@@ -19,6 +20,7 @@ export function initializeAgents(): void {
   registerOpsCoordinatorAgent();
   registerFinanceAgent();
   registerClientCommsAgent();
+  registerExecutiveBriefAgent();
 
   initialized = true;
 }
