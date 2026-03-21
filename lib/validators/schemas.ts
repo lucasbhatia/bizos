@@ -37,6 +37,8 @@ export const actorTypeSchema = z.enum(['user', 'agent', 'system']);
 
 export const humanDecisionSchema = z.enum(['pending', 'accepted', 'rejected', 'modified']);
 
+export const senderTypeSchema = z.enum(['client', 'broker']);
+
 // ============================================================================
 // Input schemas (for form validation and API requests)
 // ============================================================================
@@ -80,6 +82,19 @@ export const uploadDocumentSchema = z.object({
   file_name: z.string().min(1),
 });
 
+export const createMessageSchema = z.object({
+  client_account_id: z.string().uuid(),
+  entry_case_id: z.string().uuid().optional(),
+  sender_type: senderTypeSchema,
+  sender_id: z.string().min(1),
+  sender_name: z.string().min(1),
+  body: z.string().min(1).max(5000),
+});
+
+export const markMessagesReadSchema = z.object({
+  messageIds: z.array(z.string().uuid()).min(1),
+});
+
 export const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -102,3 +117,5 @@ export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export type UploadDocumentInput = z.infer<typeof uploadDocumentSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type CreateMessageInput = z.infer<typeof createMessageSchema>;
+export type MarkMessagesReadInput = z.infer<typeof markMessagesReadSchema>;

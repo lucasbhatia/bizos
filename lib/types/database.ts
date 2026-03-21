@@ -27,6 +27,8 @@ export type ActorType = 'user' | 'agent' | 'system';
 
 export type HumanDecision = 'pending' | 'accepted' | 'rejected' | 'modified';
 
+export type SenderType = 'client' | 'broker';
+
 // ============================================================================
 // Table row types
 // ============================================================================
@@ -179,6 +181,19 @@ export interface AiActionLog {
   human_decision: HumanDecision | null;
   human_decision_by: string | null;
   human_decision_reason: string | null;
+  created_at: string;
+}
+
+export interface Message {
+  id: string;
+  tenant_id: string;
+  entry_case_id: string | null;
+  client_account_id: string;
+  sender_type: SenderType;
+  sender_id: string;
+  sender_name: string;
+  body: string;
+  is_read: boolean;
   created_at: string;
 }
 

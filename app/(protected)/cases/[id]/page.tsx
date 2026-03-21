@@ -12,6 +12,7 @@ import { CaseTasks } from "./case-tasks";
 import { CaseActivity } from "./case-activity";
 import { CaseClassification } from "./case-classification";
 import { CaseCommunications } from "./case-communications";
+import { CaseMessages } from "./case-messages";
 import { Ship, Plane, Truck, TrainFront, AlertTriangle } from "lucide-react";
 
 const MODE_ICONS: Record<TransportMode, React.ElementType> = {
@@ -177,6 +178,7 @@ export default async function CaseDetailPage({
             Tasks ({openTasks} open)
           </TabsTrigger>
           <TabsTrigger value="classification">Classification</TabsTrigger>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="comms">Communications</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
@@ -259,6 +261,16 @@ export default async function CaseDetailPage({
             approvedClassifications={
               ((entryCase.metadata as Record<string, unknown>)?.approved_classifications as { line_item_index: number; hts_code: string }[]) ?? []
             }
+          />
+        </TabsContent>
+
+        <TabsContent value="messages" className="mt-4">
+          <CaseMessages
+            caseId={entryCase.id}
+            clientAccountId={entryCase.client_account_id}
+            tenantId={entryCase.tenant_id}
+            currentUserId={currentUser?.id ?? ""}
+            currentUserName={currentUser?.full_name ?? "Broker"}
           />
         </TabsContent>
 

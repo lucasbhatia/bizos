@@ -1,11 +1,27 @@
 import { redirect } from "next/navigation";
 import { getPortalUser } from "@/lib/supabase/portal";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { PortalMessagesClient } from "./messages-client";
 
 export default async function PortalMessagesPage() {
   const portalUser = await getPortalUser();
   if (!portalUser) redirect("/login");
+
+  const supabase = createClient();
+
+  // Fetch all messages for this client account
+  const { data: messages } = await supabase
+    .from("messages")
+    .select("*")
+    .eq("client_account_id", portalUser.clientAccount.id)
+    .order("created_at", { ascending: true });
+
+  // Fetch cases for this client so we can show case numbers
+  const { data: cases } = await supabase
+    .from("entry_cases")
+    .select("id, case_number, status")
+    .eq("client_account_id", portalUser.clientAccount.id)
+    .order("created_at", { ascending: false });
 
   return (
     <div className="space-y-6">
@@ -16,22 +32,17 @@ export default async function PortalMessagesPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Inbox</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <MessageSquare className="h-10 w-10 text-slate-300" />
-            <p className="mt-3 text-sm font-medium text-slate-500">
-              No messages yet
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Messaging will be available in a future update.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <PortalMessagesClient
+        initialMessages={messages ?? []}
+        cases={cases ?? []}
+        clientAccountId={portalUser.clientAccount.id}
+        tenantId={portalUser.clientAccount.tenant_id}
+        currentUser={{
+          id: portalUser.user.id,
+          name: portalUser.contact.name,
+          senderType: "client",
+        }}
+      />
     </div>
   );
 }
