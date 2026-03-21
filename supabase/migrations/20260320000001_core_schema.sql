@@ -1,6 +1,8 @@
 -- BizOS Core Database Schema v1
 -- Multi-tenant customs brokerage operating system
 -- All tables require tenant_id with RLS enforced
+--
+-- Structure: 1) Enums, 2) Functions, 3) All Tables, 4) All RLS Policies
 
 -- ============================================================================
 -- ENUMS
@@ -43,7 +45,6 @@ CREATE TYPE human_decision AS ENUM ('pending', 'accepted', 'rejected', 'modified
 -- HELPER FUNCTIONS
 -- ============================================================================
 
--- Auto-update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -53,10 +54,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================================================
--- TABLE 1: tenants
--- The root entity. Every other table references a tenant.
+-- TABLES (created in FK-dependency order, NO policies yet)
 -- ============================================================================
 
+-- TABLE 1: tenants
 CREATE TABLE tenants (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
@@ -72,24 +73,7 @@ CREATE TRIGGER tenants_updated_at
   BEFORE UPDATE ON tenants
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
-
--- Tenant RLS: users can only see their own tenant
-CREATE POLICY tenants_select ON tenants FOR SELECT
-  USING (id IN (
-    SELECT tenant_id FROM users WHERE id = auth.uid()
-  ));
-
-CREATE POLICY tenants_update ON tenants FOR UPDATE
-  USING (id IN (
-    SELECT tenant_id FROM users WHERE id = auth.uid()
-  ));
-
--- ============================================================================
 -- TABLE 2: users
--- Links auth.users to tenant-scoped profiles with roles.
--- ============================================================================
-
 CREATE TABLE users (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -109,26 +93,7 @@ CREATE TRIGGER users_updated_at
   BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY users_select ON users FOR SELECT
-  USING (tenant_id IN (
-    SELECT tenant_id FROM users AS u WHERE u.id = auth.uid()
-  ));
-
-CREATE POLICY users_update ON users FOR UPDATE
-  USING (tenant_id IN (
-    SELECT tenant_id FROM users AS u WHERE u.id = auth.uid()
-  ));
-
-CREATE POLICY users_insert ON users FOR INSERT
-  WITH CHECK (true);
-
--- ============================================================================
 -- TABLE 3: business_units
--- Physical offices or operational units within a tenant.
--- ============================================================================
-
 CREATE TABLE business_units (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -146,19 +111,7 @@ CREATE TRIGGER business_units_updated_at
   BEFORE UPDATE ON business_units
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-ALTER TABLE business_units ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY business_units_select ON business_units FOR SELECT
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY business_units_all ON business_units FOR ALL
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
--- ============================================================================
 -- TABLE 4: client_accounts
--- Importers/exporters that the brokerage serves.
--- ============================================================================
-
 CREATE TABLE client_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -178,19 +131,7 @@ CREATE TRIGGER client_accounts_updated_at
   BEFORE UPDATE ON client_accounts
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-ALTER TABLE client_accounts ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY client_accounts_select ON client_accounts FOR SELECT
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY client_accounts_all ON client_accounts FOR ALL
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
--- ============================================================================
 -- TABLE 5: contacts
--- Contact people at client accounts.
--- ============================================================================
-
 CREATE TABLE contacts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -211,19 +152,7 @@ CREATE TRIGGER contacts_updated_at
   BEFORE UPDATE ON contacts
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY contacts_select ON contacts FOR SELECT
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY contacts_all ON contacts FOR ALL
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
--- ============================================================================
 -- TABLE 6: entry_cases
--- The core work unit — a customs entry being processed.
--- ============================================================================
-
 CREATE TABLE entry_cases (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -253,19 +182,7 @@ CREATE TRIGGER entry_cases_updated_at
   BEFORE UPDATE ON entry_cases
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-ALTER TABLE entry_cases ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY entry_cases_select ON entry_cases FOR SELECT
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY entry_cases_all ON entry_cases FOR ALL
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
--- ============================================================================
 -- Case number auto-generation
--- Format: {tenant_slug}-{YYYY}-{NNNNN}
--- ============================================================================
-
 CREATE SEQUENCE case_number_seq START 1;
 
 CREATE OR REPLACE FUNCTION generate_case_number(p_tenant_id uuid)
@@ -282,11 +199,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ============================================================================
--- TABLE 7: workflow_events
--- Append-only log of case status transitions.
--- ============================================================================
-
+-- TABLE 7: workflow_events (append-only)
 CREATE TABLE workflow_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -302,26 +215,7 @@ CREATE TABLE workflow_events (
 CREATE INDEX idx_workflow_events_tenant ON workflow_events(tenant_id);
 CREATE INDEX idx_workflow_events_case ON workflow_events(entry_case_id);
 
-ALTER TABLE workflow_events ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY workflow_events_select ON workflow_events FOR SELECT
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY workflow_events_insert ON workflow_events FOR INSERT
-  WITH CHECK (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
--- Append-only: no updates or deletes
-CREATE POLICY workflow_events_no_update ON workflow_events FOR UPDATE
-  USING (false);
-
-CREATE POLICY workflow_events_no_delete ON workflow_events FOR DELETE
-  USING (false);
-
--- ============================================================================
 -- TABLE 8: tasks
--- Work items that can be linked to cases or standalone.
--- ============================================================================
-
 CREATE TABLE tasks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -346,19 +240,7 @@ CREATE TRIGGER tasks_updated_at
   BEFORE UPDATE ON tasks
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY tasks_select ON tasks FOR SELECT
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY tasks_all ON tasks FOR ALL
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
--- ============================================================================
 -- TABLE 9: documents
--- File metadata for documents attached to cases.
--- ============================================================================
-
 CREATE TABLE documents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -378,19 +260,7 @@ CREATE TABLE documents (
 CREATE INDEX idx_documents_tenant ON documents(tenant_id);
 CREATE INDEX idx_documents_case ON documents(entry_case_id);
 
-ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY documents_select ON documents FOR SELECT
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY documents_all ON documents FOR ALL
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
--- ============================================================================
--- TABLE 10: audit_events
--- APPEND-ONLY audit trail. No updates, no deletes.
--- ============================================================================
-
+-- TABLE 10: audit_events (append-only)
 CREATE TABLE audit_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -408,26 +278,7 @@ CREATE INDEX idx_audit_events_tenant ON audit_events(tenant_id);
 CREATE INDEX idx_audit_events_entity ON audit_events(entity_type, entity_id);
 CREATE INDEX idx_audit_events_created ON audit_events(created_at);
 
-ALTER TABLE audit_events ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY audit_events_select ON audit_events FOR SELECT
-  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
-CREATE POLICY audit_events_insert ON audit_events FOR INSERT
-  WITH CHECK (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
-
--- APPEND-ONLY: reject all updates and deletes
-CREATE POLICY audit_events_no_update ON audit_events FOR UPDATE
-  USING (false);
-
-CREATE POLICY audit_events_no_delete ON audit_events FOR DELETE
-  USING (false);
-
--- ============================================================================
 -- TABLE 11: ai_action_logs
--- Logs of all AI agent actions with confidence and human review.
--- ============================================================================
-
 CREATE TABLE ai_action_logs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -447,6 +298,117 @@ CREATE TABLE ai_action_logs (
 CREATE INDEX idx_ai_action_logs_tenant ON ai_action_logs(tenant_id);
 CREATE INDEX idx_ai_action_logs_case ON ai_action_logs(entry_case_id);
 
+-- ============================================================================
+-- ROW LEVEL SECURITY — all tables, all policies
+-- (defined AFTER all tables exist so cross-table references work)
+-- ============================================================================
+
+-- tenants
+ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenants_select ON tenants FOR SELECT
+  USING (id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+CREATE POLICY tenants_update ON tenants FOR UPDATE
+  USING (id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+-- users
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY users_select ON users FOR SELECT
+  USING (tenant_id IN (SELECT u.tenant_id FROM users AS u WHERE u.id = auth.uid()));
+
+CREATE POLICY users_update ON users FOR UPDATE
+  USING (tenant_id IN (SELECT u.tenant_id FROM users AS u WHERE u.id = auth.uid()));
+
+CREATE POLICY users_insert ON users FOR INSERT
+  WITH CHECK (true);
+
+-- business_units
+ALTER TABLE business_units ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY business_units_select ON business_units FOR SELECT
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+CREATE POLICY business_units_all ON business_units FOR ALL
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+-- client_accounts
+ALTER TABLE client_accounts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY client_accounts_select ON client_accounts FOR SELECT
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+CREATE POLICY client_accounts_all ON client_accounts FOR ALL
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+-- contacts
+ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY contacts_select ON contacts FOR SELECT
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+CREATE POLICY contacts_all ON contacts FOR ALL
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+-- entry_cases
+ALTER TABLE entry_cases ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY entry_cases_select ON entry_cases FOR SELECT
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+CREATE POLICY entry_cases_all ON entry_cases FOR ALL
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+-- workflow_events
+ALTER TABLE workflow_events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY workflow_events_select ON workflow_events FOR SELECT
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+CREATE POLICY workflow_events_insert ON workflow_events FOR INSERT
+  WITH CHECK (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+CREATE POLICY workflow_events_no_update ON workflow_events FOR UPDATE
+  USING (false);
+
+CREATE POLICY workflow_events_no_delete ON workflow_events FOR DELETE
+  USING (false);
+
+-- tasks
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tasks_select ON tasks FOR SELECT
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+CREATE POLICY tasks_all ON tasks FOR ALL
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+-- documents
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY documents_select ON documents FOR SELECT
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+CREATE POLICY documents_all ON documents FOR ALL
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+-- audit_events (append-only)
+ALTER TABLE audit_events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY audit_events_select ON audit_events FOR SELECT
+  USING (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+CREATE POLICY audit_events_insert ON audit_events FOR INSERT
+  WITH CHECK (tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid()));
+
+CREATE POLICY audit_events_no_update ON audit_events FOR UPDATE
+  USING (false);
+
+CREATE POLICY audit_events_no_delete ON audit_events FOR DELETE
+  USING (false);
+
+-- ai_action_logs
 ALTER TABLE ai_action_logs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY ai_action_logs_select ON ai_action_logs FOR SELECT
