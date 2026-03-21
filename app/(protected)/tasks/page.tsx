@@ -264,7 +264,6 @@ export default async function TasksPage({
                           <Link
                             href={`/cases/${entryCase.id}`}
                             className="font-mono text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                            onClick={(e) => e.stopPropagation()}
                           >
                             {entryCase.case_number}
                           </Link>
