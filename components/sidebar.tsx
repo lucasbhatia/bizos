@@ -16,18 +16,32 @@ import {
   ScrollText,
   Inbox,
   Shield,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
-import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { LogoutButton } from "@/components/logout-button";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import type { UserWithTenant, UserRole } from "@/lib/types/database";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+// ---------------------------------------------------------------------------
+// Nav configuration
+// ---------------------------------------------------------------------------
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
   roles: UserRole[];
+  /** Optional badge count – wired up later via props/context */
+  badge?: number;
 }
 
 const navItems: NavItem[] = [
@@ -40,99 +54,292 @@ const navItems: NavItem[] = [
   { label: "Finance", href: "/finance", icon: DollarSign, roles: ["admin", "finance"] },
   { label: "Reports", href: "/reports", icon: BarChart3, roles: ["admin", "ops_manager", "broker_lead"] },
   { label: "Audit Trail", href: "/audit", icon: ScrollText, roles: ["admin", "broker_lead"] },
-  { label: "Settings", href: "/settings", icon: Settings, roles: ["admin"] },
   { label: "Admin", href: "/admin", icon: Shield, roles: ["admin"] },
+  { label: "Settings", href: "/settings", icon: Settings, roles: ["admin"] },
 ];
+
+const STORAGE_KEY = "bizos-sidebar-collapsed";
+
+// ---------------------------------------------------------------------------
+// Helper: user initials
+// ---------------------------------------------------------------------------
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export function Sidebar({ user }: { user: UserWithTenant }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  // Collapse state — persisted in localStorage
+  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Hydrate collapsed state from localStorage after mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === "true") setCollapsed(true);
+    } catch {
+      // SSR or localStorage unavailable — ignore
+    }
+  }, []);
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(STORAGE_KEY, String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
 
   const visibleItems = navItems.filter((item) =>
     item.roles.includes(user.role)
   );
 
-  const sidebarContent = (
-    <>
-      {/* Logo */}
-      <div className="flex h-14 items-center border-b border-slate-200 px-4">
-        <span className="text-lg font-semibold text-slate-900">BizOS</span>
-      </div>
-      {user.tenant && (
-        <div className="border-b border-slate-200 px-4 py-2">
-          <p className="text-xs text-slate-500">{user.tenant.name}</p>
-        </div>
-      )}
+  // Logout handler
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
-      {/* Nav */}
-      <nav className="flex-1 space-y-1 p-3">
-        {visibleItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-slate-200 text-slate-900"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
+  const roleLabel = user.role.replace(/_/g, " ");
+
+  // ---------------------------------------------------------------------------
+  // Shared sidebar inner content (used by both mobile & desktop)
+  // ---------------------------------------------------------------------------
+  function renderSidebar(isMobile: boolean) {
+    const isCollapsed = isMobile ? false : collapsed;
+
+    return (
+      <div className="flex h-full flex-col">
+        {/* ---- Logo / Branding ---- */}
+        <div className="flex h-16 items-center gap-3 border-b border-white/10 px-4">
+          {/* Logo mark */}
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500 text-sm font-bold text-white">
+            B
+          </div>
+          {!isCollapsed && (
+            <div className="min-w-0">
+              <span className="text-base font-semibold tracking-tight text-white">
+                BizOS
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Tenant name */}
+        {user.tenant && !isCollapsed && (
+          <div className="border-b border-white/10 px-4 py-2">
+            <p className="truncate text-xs text-slate-400">
+              {user.tenant.name}
+            </p>
+          </div>
+        )}
+
+        {/* ---- Navigation ---- */}
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
+          {visibleItems.map((item) => {
+            const isActive = pathname.startsWith(item.href);
+            const Icon = item.icon;
+
+            const link = (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => {
+                  if (isMobile) setMobileOpen(false);
+                }}
+                className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150 ${
+                  isActive
+                    ? "bg-white/10 text-white"
+                    : "text-slate-300 hover:bg-white/5 hover:text-white"
+                } ${isCollapsed ? "justify-center" : ""}`}
+              >
+                {/* Active indicator — left border */}
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-blue-400" />
+                )}
+
+                <Icon className="h-5 w-5 shrink-0" />
+
+                {!isCollapsed && (
+                  <>
+                    <span className="truncate">{item.label}</span>
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
+                        {item.badge > 99 ? "99+" : item.badge}
+                      </span>
+                    )}
+                  </>
+                )}
+
+                {/* Badge dot when collapsed */}
+                {isCollapsed && item.badge !== undefined && item.badge > 0 && (
+                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
+                )}
+              </Link>
+            );
+
+            // Wrap in tooltip when collapsed
+            if (isCollapsed) {
+              return (
+                <Tooltip key={item.href} delayDuration={0}>
+                  <TooltipTrigger asChild>{link}</TooltipTrigger>
+                  <TooltipContent side="right" className="font-medium">
+                    {item.label}
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="ml-1.5 text-red-400">({item.badge})</span>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return link;
+          })}
+        </nav>
+
+        {/* ---- Bottom section ---- */}
+        <div className="border-t border-white/10 p-3">
+          {/* User row */}
+          <div
+            className={`flex items-center gap-3 rounded-md px-2 py-2 ${
+              isCollapsed ? "justify-center" : ""
+            }`}
+          >
+            {/* Avatar */}
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/30 text-xs font-semibold text-blue-300">
+              {getInitials(user.full_name)}
+            </div>
+
+            {!isCollapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-white">
+                  {user.full_name}
+                </p>
+                <span className="inline-block rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                  {roleLabel}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Logout */}
+          {isCollapsed ? (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleLogout}
+                  className="mt-1 flex w-full items-center justify-center rounded-md px-3 py-2 text-slate-400 transition-colors duration-150 hover:bg-white/5 hover:text-white"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="font-medium">
+                Sign out
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              onClick={handleLogout}
+              className="mt-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 transition-colors duration-150 hover:bg-white/5 hover:text-white"
             >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+              <LogOut className="h-5 w-5 shrink-0" />
+              Sign out
+            </button>
+          )}
 
-      {/* User info */}
-      <div className="border-t border-slate-200 p-4">
-        <div className="mb-2">
-          <p className="text-sm font-medium text-slate-900">{user.full_name}</p>
-          <Badge variant="secondary" className="mt-1 text-xs">
-            {user.role.replace("_", " ")}
-          </Badge>
+          {/* Collapse toggle (desktop only) */}
+          {!isMobile && (
+            <>
+              {isCollapsed ? (
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={toggleCollapsed}
+                      className="mt-1 flex w-full items-center justify-center rounded-md px-3 py-2 text-slate-400 transition-colors duration-150 hover:bg-white/5 hover:text-white"
+                    >
+                      <PanelLeftOpen className="h-5 w-5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="font-medium">
+                    Expand sidebar
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <button
+                  onClick={toggleCollapsed}
+                  className="mt-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 transition-colors duration-150 hover:bg-white/5 hover:text-white"
+                >
+                  <PanelLeftClose className="h-5 w-5 shrink-0" />
+                  Collapse
+                </button>
+              )}
+            </>
+          )}
         </div>
-        <LogoutButton />
       </div>
-    </>
-  );
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
-    <>
-      {/* Mobile toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed left-4 top-3 z-50 md:hidden"
+    <TooltipProvider>
+      {/* Mobile hamburger button */}
+      <button
         onClick={() => setMobileOpen(!mobileOpen)}
+        className="fixed left-4 top-3 z-50 flex h-10 w-10 items-center justify-center rounded-md text-slate-700 hover:bg-slate-100 md:hidden"
+        aria-label={mobileOpen ? "Close menu" : "Open menu"}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </Button>
+      </button>
 
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Mobile sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform md:hidden ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#0F172A] transition-transform duration-200 ease-in-out md:hidden ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {sidebarContent}
+        {renderSidebar(true)}
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden h-screen w-64 flex-col border-r border-slate-200 bg-white md:flex">
-        {sidebarContent}
+      <aside
+        className={`hidden h-screen flex-col bg-[#0F172A] transition-[width] duration-200 ease-in-out md:flex ${
+          collapsed ? "w-16" : "w-64"
+        }`}
+      >
+        {renderSidebar(false)}
       </aside>
-    </>
+    </TooltipProvider>
   );
 }
