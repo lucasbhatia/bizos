@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   ScrollText,
+  Inbox,
 } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["admin", "broker_lead", "ops_manager", "specialist", "finance", "viewer"] },
+  { label: "Intake", href: "/intake", icon: Inbox, roles: ["admin", "broker_lead", "ops_manager", "specialist"] },
   { label: "Cases", href: "/cases", icon: Briefcase, roles: ["admin", "broker_lead", "ops_manager", "specialist", "finance"] },
   { label: "Documents", href: "/documents", icon: FileText, roles: ["admin", "broker_lead", "ops_manager", "specialist", "finance"] },
   { label: "Tasks", href: "/tasks", icon: CheckSquare, roles: ["admin", "broker_lead", "ops_manager", "specialist", "finance"] },
