@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileText, Shield, Zap, Loader2 } from "lucide-react";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -48,7 +48,9 @@ export default function SignupPage() {
       });
 
       if (profileError) {
-        setError("Account created but profile setup failed. Contact your administrator.");
+        setError(
+          "Account created but profile setup failed. Contact your administrator."
+        );
         setLoading(false);
         return;
       }
@@ -59,19 +61,95 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">BizOS</CardTitle>
-          <CardDescription>Create your account</CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSignup}>
-          <CardContent className="space-y-4">
+    <div className="flex min-h-screen">
+      {/* Left panel — dark navy branding */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between bg-slate-900 p-12 text-white">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">BizOS</h1>
+        </div>
+
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-4xl font-bold leading-tight">
+              The Operating System
+              <br />
+              for Modern Customs
+              <br />
+              Brokerage
+            </h2>
+          </div>
+
+          <div className="space-y-5">
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                <FileText className="h-5 w-5 text-blue-400" />
+              </div>
+              <div>
+                <p className="font-semibold">Intelligent Document Processing</p>
+                <p className="text-sm text-slate-400">
+                  AI-powered parsing of commercial invoices, bills of lading,
+                  and customs forms.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                <Shield className="h-5 w-5 text-green-400" />
+              </div>
+              <div>
+                <p className="font-semibold">19 CFR Compliance Built In</p>
+                <p className="text-sm text-slate-400">
+                  Automated classification review, PGA screening, and audit
+                  trails for every action.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                <Zap className="h-5 w-5 text-yellow-400" />
+              </div>
+              <div>
+                <p className="font-semibold">Workflow Automation</p>
+                <p className="text-sm text-slate-400">
+                  State-machine driven case management from intake to release
+                  with real-time tracking.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs text-slate-500">
+          &copy; {new Date().getFullYear()} BizOS. All rights reserved.
+        </p>
+      </div>
+
+      {/* Right panel — signup form */}
+      <div className="flex w-full flex-col items-center justify-center px-6 lg:w-1/2 bg-white">
+        {/* Mobile logo */}
+        <div className="mb-8 lg:hidden">
+          <h1 className="text-2xl font-bold text-slate-900">BizOS</h1>
+        </div>
+
+        <div className="w-full max-w-sm space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">
+              Create your account
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Get started with BizOS in minutes
+            </p>
+          </div>
+
+          <form onSubmit={handleSignup} className="space-y-4">
             {error && (
-              <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+              <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
                 {error}
               </div>
             )}
+
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
               <Input
@@ -81,8 +159,10 @@ export default function SignupPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
+                className="h-11"
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -92,8 +172,10 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="h-11"
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -104,22 +186,37 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
+                className="h-11"
               />
             </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-3">
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creating account..." : "Create account"}
+
+            <Button
+              type="submit"
+              className="w-full h-11 bg-blue-600 hover:bg-blue-700"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                "Create account"
+              )}
             </Button>
-            <p className="text-sm text-slate-500">
-              Already have an account?{" "}
-              <Link href="/login" className="text-slate-900 underline">
-                Sign in
-              </Link>
-            </p>
-          </CardFooter>
-        </form>
-      </Card>
+          </form>
+
+          <p className="text-center text-sm text-slate-500">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              className="font-medium text-blue-600 hover:text-blue-700"
+            >
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
