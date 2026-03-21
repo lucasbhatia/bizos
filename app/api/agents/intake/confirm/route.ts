@@ -30,6 +30,11 @@ export async function POST(request: NextRequest) {
   const { draft_case, business_unit_id, assigned_user_id } = parsed.data;
   const serviceClient = createServiceClient();
 
+  // Generate case number
+  const { data: caseNumResult } = await serviceClient
+    .rpc('generate_case_number', { p_tenant_id: auth.tenantId });
+  const caseNumber = caseNumResult ?? `case-${Date.now()}`;
+
   // Create the entry case
   const { data: newCase, error: caseError } = await serviceClient
     .from('entry_cases')
@@ -38,6 +43,7 @@ export async function POST(request: NextRequest) {
       client_account_id: draft_case.client_id,
       business_unit_id: business_unit_id ?? null,
       assigned_user_id: assigned_user_id ?? null,
+      case_number: caseNumber,
       mode_of_transport: draft_case.mode,
       status: 'intake',
       priority: draft_case.priority,
