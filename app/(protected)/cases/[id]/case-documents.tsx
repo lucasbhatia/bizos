@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Check, AlertCircle, Clock } from "lucide-react";
 import { DocumentUpload } from "@/components/document-upload";
+import { ExtractedFields, ParseButton } from "@/components/extracted-fields";
 import type { DocType, ParseStatus } from "@/lib/types/database";
 
 interface Document {
@@ -90,12 +91,18 @@ export function CaseDocuments({
                     </Badge>
                   );
                 })()}
+                {latestDoc && latestDoc.parse_status !== 'completed' && (
+                  <ParseButton documentId={latestDoc.id} parseStatus={latestDoc.parse_status} />
+                )}
                 {!hasDoc && (
                   <Badge variant="outline" className="text-orange-500 border-orange-300">
                     Missing
                   </Badge>
                 )}
               </CardContent>
+              {latestDoc && latestDoc.parse_status === 'completed' && Object.keys(latestDoc.extracted_data).length > 0 && (
+                <ExtractedFields documentId={latestDoc.id} extractedData={latestDoc.extracted_data} />
+              )}
             </Card>
           );
         })}

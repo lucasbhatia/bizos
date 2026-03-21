@@ -57,9 +57,9 @@ Always reference it before starting a new step.
 /lib/validators/ — Zod schemas
 
 ## Current Build Status
-- Phase: 1 COMPLETE
-- Next: Phase 2 (AI Agents Layer), Step 13
-- Completed: Steps 1–12
+- Phase: 2 (AI Agents Layer)
+- Next: Step 14
+- Completed: Steps 1–13
 
 ## Build Log
 - [2026-03-20] Step 1: Project initialization ✓ (commit 49130cd)
@@ -74,6 +74,7 @@ Always reference it before starting a new step.
 - [2026-03-20] Step 10: Task system ✓ (commit 7568801)
 - [2026-03-20] Step 11: New case wizard ✓ (commit 641d81f)
 - [2026-03-20] Step 12: Audit trail ✓ (commit eecd124)
+- [2026-03-20] Step 13: Agent infrastructure ✓ (commit 910d824)
 
 ## Build Rules
 - After EVERY step: run /step-complete to commit and update status
