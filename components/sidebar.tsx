@@ -16,6 +16,7 @@ import {
   ScrollText,
   Inbox,
   Shield,
+  Play,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
@@ -46,6 +47,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["admin", "broker_lead", "ops_manager", "specialist", "finance", "viewer"] },
+  { label: "Live Demo", href: "/demo", icon: Play, roles: ["admin", "broker_lead", "ops_manager"] },
   { label: "Intake", href: "/intake", icon: Inbox, roles: ["admin", "broker_lead", "ops_manager", "specialist"] },
   { label: "Cases", href: "/cases", icon: Briefcase, roles: ["admin", "broker_lead", "ops_manager", "specialist", "finance"] },
   { label: "Documents", href: "/documents", icon: FileText, roles: ["admin", "broker_lead", "ops_manager", "specialist", "finance"] },
