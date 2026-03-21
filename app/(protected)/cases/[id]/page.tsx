@@ -12,6 +12,7 @@ import { CaseTasks } from "./case-tasks";
 import { CaseActivity } from "./case-activity";
 import { CaseClassification } from "./case-classification";
 import { CaseCommunications } from "./case-communications";
+import { CaseFiling } from "./case-filing";
 import { CaseMessages } from "./case-messages";
 import { Ship, Plane, Truck, TrainFront, AlertTriangle } from "lucide-react";
 
@@ -178,6 +179,7 @@ export default async function CaseDetailPage({
             Tasks ({openTasks} open)
           </TabsTrigger>
           <TabsTrigger value="classification">Classification</TabsTrigger>
+          <TabsTrigger value="filing">Filing</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="comms">Communications</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
@@ -262,6 +264,10 @@ export default async function CaseDetailPage({
               ((entryCase.metadata as Record<string, unknown>)?.approved_classifications as { line_item_index: number; hts_code: string }[]) ?? []
             }
           />
+        </TabsContent>
+
+        <TabsContent value="filing" className="mt-4">
+          <CaseFiling caseId={entryCase.id} />
         </TabsContent>
 
         <TabsContent value="messages" className="mt-4">

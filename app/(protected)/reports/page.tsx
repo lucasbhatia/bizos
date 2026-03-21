@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -518,9 +520,16 @@ export default async function ReportsPage() {
       {/* ================================================================== */}
 
       <div>
-        <h2 className="text-lg font-semibold text-slate-800 mb-3">
-          Agent Performance
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-slate-800">
+            Agent Performance
+          </h2>
+          <Link href="/reports/agents">
+            <Button variant="outline" size="sm">
+              View Detailed Agent Metrics
+            </Button>
+          </Link>
+        </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-4">
           <Card>
             <CardContent className="pt-6">
