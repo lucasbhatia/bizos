@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
 import {
   analyzeErrors,
   generateRules,
@@ -8,55 +8,31 @@ import {
 } from '@/lib/agents/validation-rules';
 
 export async function GET() {
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
-  const rules = await getStoredRules(profile.tenant_id);
+  const rules = await getStoredRules(auth.tenantId);
 
   return NextResponse.json({ rules });
 }
 
 export async function POST() {
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
   const allowedRoles = ['admin', 'broker_lead'];
-  if (!allowedRoles.includes(profile.role)) {
+  if (!allowedRoles.includes(auth.role)) {
     return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
   }
 
   // Analyze error patterns and generate new rules
-  const patterns = await analyzeErrors(profile.tenant_id);
+  const patterns = await analyzeErrors(auth.tenantId);
   const newRules = generateRules(patterns);
 
   // Merge with existing rules (avoid duplicates by field+condition)
-  const existingRules = await getStoredRules(profile.tenant_id);
+  const existingRules = await getStoredRules(auth.tenantId);
   const existingKeys = new Set(existingRules.map((r) => `${r.field}:${r.condition}:${r.value}`));
 
   const mergedRules = [
@@ -64,7 +40,7 @@ export async function POST() {
     ...newRules.filter((r) => !existingKeys.has(`${r.field}:${r.condition}:${r.value}`)),
   ];
 
-  await saveRules(profile.tenant_id, mergedRules);
+  await saveRules(auth.tenantId, mergedRules);
 
   return NextResponse.json({
     success: true,

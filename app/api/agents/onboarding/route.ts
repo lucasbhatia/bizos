@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
 import { executeAgent } from "@/lib/agents/runner";
 import { initializeAgents } from "@/lib/agents/init";
 import { z } from "zod";
@@ -13,21 +13,12 @@ const onboardingSchema = z.object({
 export async function POST(request: NextRequest) {
   initializeAgents();
 
-  const supabase = createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("id, tenant_id, role")
-    .eq("id", authUser.id)
-    .single();
-
-  if (!profile || profile.role !== "admin") {
+  if (auth.role !== 'admin') {
     return NextResponse.json(
       { error: "Only admins can run the onboarding agent" },
       { status: 403 }
@@ -48,8 +39,8 @@ export async function POST(request: NextRequest) {
       "onboarding-agent",
       { data: parsed.data, trigger: "tenant_onboarding" },
       {
-        tenantId: profile.tenant_id,
-        userId: profile.id,
+        tenantId: auth.tenantId,
+        userId: auth.userId,
         triggerEvent: "tenant_onboarding",
       },
       "write"

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { initializeAgents } from '@/lib/agents/init';
 import { calculateAllAgentScores } from '@/lib/agents/promotion';
 import { z } from 'zod';
@@ -7,23 +8,13 @@ import { z } from 'zod';
 export async function GET() {
   initializeAgents();
 
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
-  const scores = await calculateAllAgentScores(profile.tenant_id);
+  const supabase = createServiceClient();
+  const scores = await calculateAllAgentScores(auth.tenantId);
 
   return NextResponse.json({ scores });
 }
@@ -36,24 +27,14 @@ const promotionActionSchema = z.object({
 export async function POST(request: NextRequest) {
   initializeAgents();
 
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
+  const supabase = createServiceClient();
   // Admin only
-  if (profile.role !== 'admin') {
+  if (auth.role !== 'admin') {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   }
 
@@ -70,12 +51,12 @@ export async function POST(request: NextRequest) {
 
   // Log the promotion/demotion decision as an audit event
   await supabase.from('audit_events').insert({
-    tenant_id: profile.tenant_id,
+    tenant_id: auth.tenantId,
     event_type: `agent_${action}`,
     entity_type: 'agent',
     entity_id: agentId,
     actor_type: 'user' as const,
-    actor_id: profile.id,
+    actor_id: auth.userId,
     action: `Agent ${agentId} ${action}d by admin`,
     details: { agent_id: agentId, action },
   });

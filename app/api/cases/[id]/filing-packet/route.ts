@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import type { DocType, TransportMode } from "@/lib/types/database";
 import { REQUIRED_DOCS_BY_MODE } from "@/lib/types/database";
 
@@ -53,14 +54,12 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createClient();
-
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   // Fetch case with client
   const { data: entryCase } = await supabase

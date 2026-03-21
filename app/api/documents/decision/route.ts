@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
 const decisionSchema = z.object({
@@ -11,22 +12,10 @@ const decisionSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
   const body = await request.json();
   const parsed = decisionSchema.safeParse(body);
   if (!parsed.success) {
@@ -42,7 +31,7 @@ export async function POST(request: NextRequest) {
     .from('documents')
     .select('id, tenant_id, extracted_data')
     .eq('id', documentId)
-    .eq('tenant_id', profile.tenant_id)
+    .eq('tenant_id', auth.tenantId)
     .single();
 
   if (!doc) {
@@ -55,7 +44,7 @@ export async function POST(request: NextRequest) {
 
   if (fields[field]) {
     fields[field].human_decision = decision;
-    fields[field].human_decision_by = profile.id;
+    fields[field].human_decision_by = auth.userId;
     if (decision === 'modified' && modifiedValue !== undefined) {
       fields[field].original_value = fields[field].value;
       fields[field].value = modifiedValue;
@@ -71,7 +60,7 @@ export async function POST(request: NextRequest) {
 
   // Log to ai_action_logs
   await serviceClient.from('ai_action_logs').insert({
-    tenant_id: profile.tenant_id,
+    tenant_id: auth.tenantId,
     agent_type: 'document-parser',
     entry_case_id: null,
     action: `Human ${decision} field: ${field}`,
@@ -80,7 +69,7 @@ export async function POST(request: NextRequest) {
     confidence: null,
     citations: [],
     human_decision: decision,
-    human_decision_by: profile.id,
+    human_decision_by: auth.userId,
     human_decision_reason: reason ?? null,
   });
 

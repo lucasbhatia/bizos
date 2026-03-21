@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { executeAgent } from '@/lib/agents/runner';
 import { initializeAgents } from '@/lib/agents/init';
 import { z } from 'zod';
@@ -11,22 +12,10 @@ const parseSchema = z.object({
 export async function POST(request: NextRequest) {
   initializeAgents();
 
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
   const body = await request.json();
   const parsed = parseSchema.safeParse(body);
   if (!parsed.success) {
@@ -41,7 +30,7 @@ export async function POST(request: NextRequest) {
     .from('documents')
     .select('*, entry_case:entry_cases(id, client_account_id, client_account:client_accounts(name))')
     .eq('id', documentId)
-    .eq('tenant_id', profile.tenant_id)
+    .eq('tenant_id', auth.tenantId)
     .single();
 
   if (!doc) {
@@ -95,8 +84,8 @@ export async function POST(request: NextRequest) {
         trigger: 'document_uploaded',
       },
       {
-        tenantId: profile.tenant_id,
-        userId: profile.id,
+        tenantId: auth.tenantId,
+        userId: auth.userId,
         caseId: doc.entry_case_id,
         triggerEvent: 'document_uploaded',
       },

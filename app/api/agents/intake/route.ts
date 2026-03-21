@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
 import { executeAgent } from '@/lib/agents/runner';
 import { initializeAgents } from '@/lib/agents/init';
 import { z } from 'zod';
@@ -16,22 +16,10 @@ const intakeSchema = z.object({
 export async function POST(request: NextRequest) {
   initializeAgents();
 
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
   const body = await request.json();
   const parsed = intakeSchema.safeParse(body);
   if (!parsed.success) {
@@ -43,8 +31,8 @@ export async function POST(request: NextRequest) {
       'intake-agent',
       { data: parsed.data, trigger: 'email_received' },
       {
-        tenantId: profile.tenant_id,
-        userId: profile.id,
+        tenantId: auth.tenantId,
+        userId: auth.userId,
         triggerEvent: 'email_received',
       },
       'write'

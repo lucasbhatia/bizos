@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
 import { executeAgent } from '@/lib/agents/runner';
 import { initializeAgents } from '@/lib/agents/init';
 import { z } from 'zod';
@@ -12,30 +12,13 @@ const briefSchema = z.object({
 export async function POST(request: NextRequest) {
   initializeAgents();
 
-  const supabase = createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json(
-      { error: 'User profile not found' },
-      { status: 403 }
-    );
-  }
-
   const allowedRoles = ['admin', 'ops_manager'];
-  if (!allowedRoles.includes(profile.role)) {
+  if (!allowedRoles.includes(auth.role)) {
     return NextResponse.json(
       { error: 'Insufficient permissions. Only admin and ops_manager can generate briefs.' },
       { status: 403 }
@@ -62,8 +45,8 @@ export async function POST(request: NextRequest) {
         trigger: `Executive brief requested for ${startDate} to ${endDate}`,
       },
       {
-        tenantId: profile.tenant_id,
-        userId: profile.id,
+        tenantId: auth.tenantId,
+        userId: auth.userId,
         triggerEvent: 'executive_brief_request',
       },
       'read'

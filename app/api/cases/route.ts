@@ -1,25 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { createCaseSchema } from "@/lib/validators/schemas";
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
-  }
-
+  const supabase = createServiceClient();
   const body = await request.json();
   const parsed = createCaseSchema.safeParse(body);
   if (!parsed.success) {
@@ -28,7 +18,7 @@ export async function POST(request: NextRequest) {
 
   // Generate case number
   const { data: caseNum } = await supabase.rpc("generate_case_number", {
-    p_tenant_id: profile.tenant_id,
+    p_tenant_id: auth.tenantId,
   });
 
   // Fallback case number if function doesn't exist yet
@@ -38,7 +28,7 @@ export async function POST(request: NextRequest) {
   const { data: entryCase, error: caseError } = await supabase
     .from("entry_cases")
     .insert({
-      tenant_id: profile.tenant_id,
+      tenant_id: auth.tenantId,
       case_number: caseNumber,
       status: "intake",
       ...parsed.data,
@@ -52,11 +42,11 @@ export async function POST(request: NextRequest) {
 
   // Create initial workflow event
   await supabase.from("workflow_events").insert({
-    tenant_id: profile.tenant_id,
+    tenant_id: auth.tenantId,
     entry_case_id: entryCase.id,
     from_status: null,
     to_status: "intake",
-    triggered_by_user_id: authUser.id,
+    triggered_by_user_id: auth.userId,
   });
 
   // Create initial tasks
@@ -70,7 +60,7 @@ export async function POST(request: NextRequest) {
     due_at: string | null;
   }[] = [
     {
-      tenant_id: profile.tenant_id,
+      tenant_id: auth.tenantId,
       entry_case_id: entryCase.id,
       assigned_user_id: parsed.data.assigned_user_id ?? null,
       title: "Collect required documents",
@@ -84,14 +74,14 @@ export async function POST(request: NextRequest) {
   const { data: opsUsers } = await supabase
     .from("users")
     .select("id")
-    .eq("tenant_id", profile.tenant_id)
+    .eq("tenant_id", auth.tenantId)
     .eq("role", "ops_manager")
     .eq("is_active", true)
     .limit(1);
 
   if (opsUsers && opsUsers.length > 0) {
     tasks.push({
-      tenant_id: profile.tenant_id,
+      tenant_id: auth.tenantId,
       entry_case_id: entryCase.id,
       assigned_user_id: opsUsers[0].id,
       title: "Review case setup",
@@ -105,12 +95,12 @@ export async function POST(request: NextRequest) {
 
   // Audit event
   await supabase.from("audit_events").insert({
-    tenant_id: profile.tenant_id,
+    tenant_id: auth.tenantId,
     event_type: "case.created",
     entity_type: "entry_case",
     entity_id: entryCase.id,
     actor_type: "user",
-    actor_id: authUser.id,
+    actor_id: auth.userId,
     action: `Created case ${caseNumber}`,
     details: {
       client_account_id: parsed.data.client_account_id,

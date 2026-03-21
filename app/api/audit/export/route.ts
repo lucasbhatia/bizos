@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user || !["admin", "broker_lead"].includes(user.role)) {
+  const auth = await authenticateApiRequest();
+  if (!auth || !["admin", "broker_lead"].includes(auth.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const supabase = createClient();
+  const supabase = createServiceClient();
   const { searchParams } = request.nextUrl;
 
   let query = supabase

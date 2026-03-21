@@ -1,29 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
 import { executeAgent } from '@/lib/agents/runner';
 import { initializeAgents } from '@/lib/agents/init';
 
 export async function POST(request: NextRequest) {
   initializeAgents();
 
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
-  // Only admin and ops_manager can trigger ops check
-  if (!['admin', 'ops_manager'].includes(profile.role)) {
+  if (!['admin', 'ops_manager'].includes(auth.role)) {
     return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
   }
 
@@ -32,8 +20,8 @@ export async function POST(request: NextRequest) {
       'ops-coordinator',
       { data: {}, trigger: 'manual_run' },
       {
-        tenantId: profile.tenant_id,
-        userId: profile.id,
+        tenantId: auth.tenantId,
+        userId: auth.userId,
         triggerEvent: 'manual_run',
       },
       'write'
@@ -47,7 +35,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`Ops coordinator invocation failed: ${message}`);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

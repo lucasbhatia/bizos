@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { VALID_STATUS_TRANSITIONS } from "@/lib/types/database";
 import type { CaseStatus } from "@/lib/types/database";
 import { updateCaseStatusSchema } from "@/lib/validators/schemas";
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   const body = await request.json();
   const parsed = updateCaseStatusSchema.safeParse(body);
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     entry_case_id: case_id,
     from_status: currentStatus,
     to_status: new_status,
-    triggered_by_user_id: authUser.id,
+    triggered_by_user_id: auth.userId,
     reason: reason ?? null,
   });
 
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
     entity_type: "entry_case",
     entity_id: case_id,
     actor_type: "user",
-    actor_id: authUser.id,
+    actor_id: auth.userId,
     action: `Changed status from ${currentStatus} to ${new_status}`,
     details: { from: currentStatus, to: new_status, reason: reason ?? null },
   });

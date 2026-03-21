@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { z } from "zod";
 
 // ============================================================================
@@ -49,7 +50,7 @@ interface TenantSettings {
 }
 
 async function getTenantSettings(
-  supabase: ReturnType<typeof createClient>,
+  supabase: ReturnType<typeof createServiceClient>,
   tenantId: string
 ): Promise<TenantSettings> {
   const { data } = await supabase
@@ -61,7 +62,7 @@ async function getTenantSettings(
 }
 
 async function updateTenantSettings(
-  supabase: ReturnType<typeof createClient>,
+  supabase: ReturnType<typeof createServiceClient>,
   tenantId: string,
   settings: TenantSettings
 ) {
@@ -73,31 +74,19 @@ async function updateTenantSettings(
 
 // GET: List saved schedules
 export async function GET() {
-  const supabase = createClient();
-
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("tenant_id, role")
-    .eq("id", authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
-  }
+  const supabase = createServiceClient();
 
   // Only admin / broker_lead / ops_manager
-  if (!["admin", "broker_lead", "ops_manager"].includes(profile.role)) {
+  if (!["admin", "broker_lead", "ops_manager"].includes(auth.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const settings = await getTenantSettings(supabase, profile.tenant_id);
+  const settings = await getTenantSettings(supabase, auth.tenantId);
   const schedules = settings.scheduled_reports ?? [];
 
   return NextResponse.json({ schedules });
@@ -105,26 +94,14 @@ export async function GET() {
 
 // POST: Save a new schedule
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("tenant_id, role")
-    .eq("id", authUser.id)
-    .single();
+  const supabase = createServiceClient();
 
-  if (!profile) {
-    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
-  }
-
-  if (!["admin", "broker_lead", "ops_manager"].includes(profile.role)) {
+  if (!["admin", "broker_lead", "ops_manager"].includes(auth.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -143,7 +120,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const settings = await getTenantSettings(supabase, profile.tenant_id);
+  const settings = await getTenantSettings(supabase, auth.tenantId);
   const schedules: ScheduledReport[] = settings.scheduled_reports ?? [];
 
   const newSchedule: ScheduledReport = {
@@ -158,7 +135,7 @@ export async function POST(request: NextRequest) {
   schedules.push(newSchedule);
   settings.scheduled_reports = schedules;
 
-  await updateTenantSettings(supabase, profile.tenant_id, settings);
+  await updateTenantSettings(supabase, auth.tenantId, settings);
 
   return NextResponse.json({ schedule: newSchedule }, { status: 201 });
 }

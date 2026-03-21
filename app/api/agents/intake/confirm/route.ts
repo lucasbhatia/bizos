@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
 const confirmSchema = z.object({
@@ -16,22 +17,10 @@ const confirmSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
   const body = await request.json();
   const parsed = confirmSchema.safeParse(body);
   if (!parsed.success) {
@@ -45,7 +34,7 @@ export async function POST(request: NextRequest) {
   const { data: newCase, error: caseError } = await serviceClient
     .from('entry_cases')
     .insert({
-      tenant_id: profile.tenant_id,
+      tenant_id: auth.tenantId,
       client_account_id: draft_case.client_id,
       business_unit_id: business_unit_id ?? null,
       assigned_user_id: assigned_user_id ?? null,
@@ -64,11 +53,11 @@ export async function POST(request: NextRequest) {
 
   // Create workflow event
   await serviceClient.from('workflow_events').insert({
-    tenant_id: profile.tenant_id,
+    tenant_id: auth.tenantId,
     entry_case_id: newCase.id,
     from_status: null,
     to_status: 'intake',
-    triggered_by_user_id: profile.id,
+    triggered_by_user_id: auth.userId,
     triggered_by_agent: 'intake-agent',
     reason: 'Case created from intake agent draft',
   });
@@ -77,7 +66,7 @@ export async function POST(request: NextRequest) {
   const { data: specialists } = await serviceClient
     .from('users')
     .select('id')
-    .eq('tenant_id', profile.tenant_id)
+    .eq('tenant_id', auth.tenantId)
     .eq('role', 'specialist')
     .eq('is_active', true)
     .limit(1);
@@ -85,14 +74,14 @@ export async function POST(request: NextRequest) {
   const { data: opsManagers } = await serviceClient
     .from('users')
     .select('id')
-    .eq('tenant_id', profile.tenant_id)
+    .eq('tenant_id', auth.tenantId)
     .eq('role', 'ops_manager')
     .eq('is_active', true)
     .limit(1);
 
   const tasks = [
     {
-      tenant_id: profile.tenant_id,
+      tenant_id: auth.tenantId,
       entry_case_id: newCase.id,
       assigned_user_id: assigned_user_id ?? specialists?.[0]?.id ?? null,
       title: 'Collect required documents',
@@ -103,7 +92,7 @@ export async function POST(request: NextRequest) {
       due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     },
     {
-      tenant_id: profile.tenant_id,
+      tenant_id: auth.tenantId,
       entry_case_id: newCase.id,
       assigned_user_id: opsManagers?.[0]?.id ?? null,
       title: 'Review case setup',
@@ -119,12 +108,12 @@ export async function POST(request: NextRequest) {
 
   // Audit event
   await serviceClient.from('audit_events').insert({
-    tenant_id: profile.tenant_id,
+    tenant_id: auth.tenantId,
     event_type: 'case.created_from_intake',
     entity_type: 'entry_case',
     entity_id: newCase.id,
     actor_type: 'user',
-    actor_id: profile.id,
+    actor_id: auth.userId,
     action: `Confirmed AI intake draft → created case ${newCase.case_number}`,
     details: { draft_case, agent: 'intake-agent' },
   });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
 import { executeAgent } from '@/lib/agents/runner';
 import { initializeAgents } from '@/lib/agents/init';
 import { z } from 'zod';
@@ -13,22 +13,10 @@ const commsSchema = z.object({
 export async function POST(request: NextRequest) {
   initializeAgents();
 
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
   const body = await request.json();
   const parsed = commsSchema.safeParse(body);
   if (!parsed.success) {
@@ -40,8 +28,8 @@ export async function POST(request: NextRequest) {
       'client-comms',
       { data: parsed.data, trigger: `comms_${parsed.data.eventType}` },
       {
-        tenantId: profile.tenant_id,
-        userId: profile.id,
+        tenantId: auth.tenantId,
+        userId: auth.userId,
         caseId: parsed.data.caseId,
         triggerEvent: `comms_${parsed.data.eventType}`,
       },

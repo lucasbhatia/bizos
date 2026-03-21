@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { z } from "zod";
 
 const createTenantSchema = z.object({
@@ -15,20 +16,9 @@ const createTenantSchema = z.object({
 });
 
 async function requireAdmin() {
-  const supabase = createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-  if (!authUser) return null;
-
-  const { data: profile } = await supabase
-    .from("users")
-    .select("id, tenant_id, role")
-    .eq("id", authUser.id)
-    .single();
-
-  if (!profile || profile.role !== "admin") return null;
-  return profile;
+  const auth = await authenticateApiRequest();
+  if (!auth || auth.role !== "admin") return null;
+  return auth;
 }
 
 export async function GET() {

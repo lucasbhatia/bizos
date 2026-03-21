@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
 import {
   storePattern,
   listPatterns,
@@ -17,29 +17,17 @@ const VALID_CATEGORIES: PatternCategory[] = [
 ];
 
 export async function GET(request: NextRequest) {
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
   const category = searchParams.get('category') as PatternCategory | null;
 
   if (query) {
     const results = await searchPatterns(
-      profile.tenant_id,
+      auth.tenantId,
       query,
       category ?? undefined
     );
@@ -47,7 +35,7 @@ export async function GET(request: NextRequest) {
   }
 
   const patterns = await listPatterns(
-    profile.tenant_id,
+    auth.tenantId,
     category ?? undefined
   );
   return NextResponse.json({ patterns });
@@ -71,24 +59,12 @@ const deleteSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
   const allowedRoles = ['admin', 'broker_lead', 'ops_manager'];
-  if (!allowedRoles.includes(profile.role)) {
+  if (!allowedRoles.includes(auth.role)) {
     return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
   }
 
@@ -102,36 +78,24 @@ export async function POST(request: NextRequest) {
   }
 
   const pattern = await storePattern({
-    tenantId: profile.tenant_id,
+    tenantId: auth.tenantId,
     category: parsed.data.category,
     title: parsed.data.title,
     content: parsed.data.content,
     metadata: parsed.data.metadata,
     sourceCaseId: parsed.data.sourceCaseId,
-    createdBy: profile.id,
+    createdBy: auth.userId,
   });
 
   return NextResponse.json({ success: true, pattern });
 }
 
 export async function DELETE(request: NextRequest) {
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
-  if (profile.role !== 'admin') {
+  if (auth.role !== 'admin') {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   }
 
@@ -144,7 +108,7 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  await deletePattern(profile.tenant_id, parsed.data.patternId);
+  await deletePattern(auth.tenantId, parsed.data.patternId);
 
   return NextResponse.json({ success: true });
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { docTypeSchema } from "@/lib/validators/schemas";
 
 const ALLOWED_TYPES = [
@@ -14,24 +15,14 @@ const ALLOWED_TYPES = [
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   // Get user profile for tenant_id
-  const { data: profile } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: "User profile not found" }, { status: 404 });
-  }
-
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
   const caseId = formData.get("case_id") as string | null;
@@ -84,7 +75,7 @@ export async function POST(request: NextRequest) {
   const version = (existingCount ?? 0) + 1;
 
   // Upload to storage
-  const storagePath = `${profile.tenant_id}/${caseId}/${docType}/${file.name}`;
+  const storagePath = `${auth.tenantId}/${caseId}/${docType}/${file.name}`;
   const { error: uploadError } = await supabase.storage
     .from("case-documents")
     .upload(storagePath, buffer, {
@@ -100,9 +91,9 @@ export async function POST(request: NextRequest) {
   const { data: doc, error: docError } = await supabase
     .from("documents")
     .insert({
-      tenant_id: profile.tenant_id,
+      tenant_id: auth.tenantId,
       entry_case_id: caseId,
-      uploaded_by_user_id: authUser.id,
+      uploaded_by_user_id: auth.userId,
       doc_type: docType,
       file_name: file.name,
       storage_path: storagePath,
@@ -120,12 +111,12 @@ export async function POST(request: NextRequest) {
 
   // Create audit event
   await supabase.from("audit_events").insert({
-    tenant_id: profile.tenant_id,
+    tenant_id: auth.tenantId,
     event_type: "document.uploaded",
     entity_type: "document",
     entity_id: doc.id,
     actor_type: "user",
-    actor_id: authUser.id,
+    actor_id: auth.userId,
     action: `Uploaded ${docType} for case`,
     details: { doc_type: docType, file_name: file.name, version, case_id: caseId },
   });

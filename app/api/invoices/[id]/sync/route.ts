@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { syncInvoice } from "@/lib/integrations/quickbooks";
 import type { InvoiceLineItem } from "@/lib/types/database";
 
@@ -7,23 +8,12 @@ export async function POST(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createClient();
-
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
-  }
-
+  const supabase = createServiceClient();
   const { data: invoice, error: fetchError } = await supabase
     .from("invoices")
     .select("*")
@@ -62,12 +52,12 @@ export async function POST(
 
     // Audit event
     await supabase.from("audit_events").insert({
-      tenant_id: profile.tenant_id,
+      tenant_id: auth.tenantId,
       event_type: "invoice.synced_qbo",
       entity_type: "invoice",
       entity_id: params.id,
       actor_type: "user",
-      actor_id: authUser.id,
+      actor_id: auth.userId,
       action: `Synced invoice ${invoice.invoice_number} to QuickBooks (${qboResponse.id})`,
       details: { qbo_invoice_id: qboResponse.id },
     });

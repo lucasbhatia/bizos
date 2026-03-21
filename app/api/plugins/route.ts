@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
 import {
   listPlugins,
   getPersistedPlugins,
@@ -10,25 +10,13 @@ import type { PluginManifest } from '@/lib/agents/plugins';
 import { z } from 'zod';
 
 export async function GET() {
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
   // Combine in-memory registry with persisted plugins
   const inMemory = listPlugins();
-  const persisted = await getPersistedPlugins(profile.tenant_id);
+  const persisted = await getPersistedPlugins(auth.tenantId);
 
   // Merge: persisted plugins that are not in-memory are shown as available but not loaded
   const inMemoryIds = new Set(inMemory.map((p) => p.id));
@@ -65,23 +53,11 @@ const removeSchema = z.object({
 const postSchema = z.union([registerSchema, toggleSchema, removeSchema]);
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
-  if (profile.role !== 'admin') {
+  if (auth.role !== 'admin') {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   }
 
@@ -107,24 +83,24 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    await persistPlugin(profile.tenant_id, manifest);
+    await persistPlugin(auth.tenantId, manifest);
     return NextResponse.json({ success: true, plugin: manifest });
   }
 
   if (data.action === 'toggle') {
-    const persisted = await getPersistedPlugins(profile.tenant_id);
+    const persisted = await getPersistedPlugins(auth.tenantId);
     const plugin = persisted.find((p) => p.id === data.id);
     if (!plugin) {
       return NextResponse.json({ error: 'Plugin not found' }, { status: 404 });
     }
 
     plugin.enabled = data.enabled;
-    await persistPlugin(profile.tenant_id, plugin);
+    await persistPlugin(auth.tenantId, plugin);
     return NextResponse.json({ success: true });
   }
 
   if (data.action === 'remove') {
-    await removePersistedPlugin(profile.tenant_id, data.id);
+    await removePersistedPlugin(auth.tenantId, data.id);
     return NextResponse.json({ success: true });
   }
 

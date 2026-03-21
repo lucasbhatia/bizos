@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { createMessageSchema } from "@/lib/validators/schemas";
 import { z } from "zod";
 
@@ -11,14 +12,12 @@ const querySchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const supabase = createClient();
-
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   const params = Object.fromEntries(request.nextUrl.searchParams);
   const parsed = querySchema.safeParse(params);
@@ -59,39 +58,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Try to get internal user profile for tenant_id
-  const { data: profile } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", authUser.id)
-    .single();
+  const supabase = createServiceClient();
 
-  // If not an internal user, check if they are a portal contact
-  let tenantId: string | null = profile?.tenant_id ?? null;
-
-  if (!tenantId) {
-    const { data: contact } = await supabase
-      .from("contacts")
-      .select("tenant_id")
-      .eq("email", authUser.email ?? "")
-      .limit(1)
-      .single();
-
-    tenantId = contact?.tenant_id ?? null;
-  }
-
-  if (!tenantId) {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
-  }
+  const tenantId = auth.tenantId;
 
   const body = await request.json();
   const parsed = createMessageSchema.safeParse(body);
@@ -119,7 +93,7 @@ export async function POST(request: NextRequest) {
     entity_type: "message",
     entity_id: message.id,
     actor_type: "user" as const,
-    actor_id: authUser.id,
+    actor_id: auth.userId,
     action: `Sent message${parsed.data.entry_case_id ? ` on case` : ""}`,
     details: {
       sender_type: parsed.data.sender_type,

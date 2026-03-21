@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
 import {
   getStoredTokens,
   getGmailClient,
@@ -27,24 +27,11 @@ const ALLOWED_ROLES = ['admin', 'ops_manager'] as const;
 export async function POST() {
   initializeAgents();
 
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
-  const roleAllowed = (ALLOWED_ROLES as readonly string[]).includes(profile.role);
+  const roleAllowed = (ALLOWED_ROLES as readonly string[]).includes(auth.role);
   if (!roleAllowed) {
     return NextResponse.json(
       { error: 'Only admin or ops_manager can trigger email sync' },
@@ -53,7 +40,7 @@ export async function POST() {
   }
 
   // Get stored Gmail tokens
-  const tokens = await getStoredTokens(profile.tenant_id);
+  const tokens = await getStoredTokens(auth.tenantId);
   if (!tokens) {
     return NextResponse.json(
       { error: 'Gmail not connected. Please connect Gmail in Settings first.' },
@@ -79,7 +66,7 @@ export async function POST() {
   }
 
   // Filter out already-processed messages
-  const processedIds = await getProcessedMessageIds(profile.tenant_id);
+  const processedIds = await getProcessedMessageIds(auth.tenantId);
   const newStubs = messageStubs.filter(
     (m) => m.id && !processedIds.has(m.id)
   );
@@ -129,8 +116,8 @@ export async function POST() {
           trigger: 'gmail_sync',
         },
         {
-          tenantId: profile.tenant_id,
-          userId: profile.id,
+          tenantId: auth.tenantId,
+          userId: auth.userId,
           triggerEvent: 'gmail_sync',
         },
         'write'
@@ -163,7 +150,7 @@ export async function POST() {
 
   // Persist processed message IDs
   if (processedNewIds.length > 0) {
-    await markMessagesProcessed(profile.tenant_id, processedNewIds);
+    await markMessagesProcessed(auth.tenantId, processedNewIds);
   }
 
   return NextResponse.json({

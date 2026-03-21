@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
 import {
   createTest,
   getActiveTests,
@@ -9,28 +9,16 @@ import {
 import { z } from 'zod';
 
 export async function GET() {
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
-  const tests = await getActiveTests(profile.tenant_id);
+  const tests = await getActiveTests(auth.tenantId);
 
   // Enrich with metrics
   const testsWithMetrics = await Promise.all(
     tests.map(async (test) => {
-      const results = await getTestResults(profile.tenant_id, test.id);
+      const results = await getTestResults(auth.tenantId, test.id);
       return {
         ...test,
         variantAMetrics: results.variantA,
@@ -60,24 +48,12 @@ const concludeSchema = z.object({
 const postSchema = z.union([createSchema, concludeSchema]);
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
+  const auth = await authenticateApiRequest();
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, tenant_id, role')
-    .eq('id', authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
-  }
-
   const allowedRoles = ['admin', 'broker_lead', 'ops_manager'];
-  if (!allowedRoles.includes(profile.role)) {
+  if (!allowedRoles.includes(auth.role)) {
     return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
   }
 
@@ -94,7 +70,7 @@ export async function POST(request: NextRequest) {
 
   if (data.action === 'create') {
     const test = await createTest(
-      profile.tenant_id,
+      auth.tenantId,
       data.agentId,
       data.name,
       data.variantA,
@@ -105,7 +81,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (data.action === 'conclude') {
-    await concludeTest(profile.tenant_id, data.testId, data.winner);
+    await concludeTest(auth.tenantId, data.testId, data.winner);
     return NextResponse.json({ success: true });
   }
 

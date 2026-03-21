@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { createInvoiceSchema } from "@/lib/validators/schemas";
 
 export async function GET(request: NextRequest) {
-  const supabase = createClient();
-
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   const url = new URL(request.url);
   const status = url.searchParams.get("status");
@@ -56,23 +57,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("tenant_id")
-    .eq("id", authUser.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
-  }
-
+  const supabase = createServiceClient();
   const body = await request.json();
   const parsed = createInvoiceSchema.safeParse(body);
   if (!parsed.success) {
@@ -85,7 +75,7 @@ export async function POST(request: NextRequest) {
   const { count } = await supabase
     .from("invoices")
     .select("id", { count: "exact", head: true })
-    .eq("tenant_id", profile.tenant_id);
+    .eq("tenant_id", auth.tenantId);
 
   const seq = String((count ?? 0) + 1).padStart(4, "0");
   const invoiceNumber = `INV-${dateStr}-${seq}`;
@@ -93,7 +83,7 @@ export async function POST(request: NextRequest) {
   const { data: invoice, error: insertError } = await supabase
     .from("invoices")
     .insert({
-      tenant_id: profile.tenant_id,
+      tenant_id: auth.tenantId,
       invoice_number: invoiceNumber,
       client_account_id: parsed.data.client_account_id,
       entry_case_id: parsed.data.entry_case_id ?? null,
@@ -116,12 +106,12 @@ export async function POST(request: NextRequest) {
 
   // Audit event
   await supabase.from("audit_events").insert({
-    tenant_id: profile.tenant_id,
+    tenant_id: auth.tenantId,
     event_type: "invoice.created",
     entity_type: "invoice",
     entity_id: invoice.id,
     actor_type: "user",
-    actor_id: authUser.id,
+    actor_id: auth.userId,
     action: `Created invoice ${invoiceNumber}`,
     details: {
       client_account_id: parsed.data.client_account_id,

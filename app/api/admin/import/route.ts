@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { authenticateApiRequest } from '@/lib/supabase/auth-api';
+import { createServiceClient } from '@/lib/supabase/server';
 import { z } from "zod";
 
 const importTargets = ["client_accounts", "contacts", "entry_cases"] as const;
@@ -70,24 +71,10 @@ function getSchemaForTarget(target: ImportTarget) {
 
 export async function POST(request: NextRequest) {
   // Auth check - admin only
-  const supabase = createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await authenticateApiRequest();
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { data: profile } = await supabase
-    .from("users")
-    .select("id, tenant_id, role")
-    .eq("id", authUser.id)
-    .single();
-
-  if (!profile || profile.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
   const body = await request.json();
   const parsed = importSchema.safeParse(body);
   if (!parsed.success) {
@@ -112,7 +99,7 @@ export async function POST(request: NextRequest) {
     if (result.success) {
       const record: Record<string, unknown> = {
         ...result.data,
-        tenant_id: profile.tenant_id,
+        tenant_id: auth.tenantId,
       };
 
       // For entry_cases, need a client_account_id
@@ -121,7 +108,7 @@ export async function POST(request: NextRequest) {
         const { data: firstClient } = await service
           .from("client_accounts")
           .select("id")
-          .eq("tenant_id", profile.tenant_id)
+          .eq("tenant_id", auth.tenantId)
           .limit(1)
           .single();
 
