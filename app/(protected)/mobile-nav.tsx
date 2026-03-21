@@ -53,8 +53,12 @@ export function MobileNav({ userRole }: MobileNavProps) {
   );
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white md:hidden">
-      <div className="flex items-center justify-around">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white md:hidden"
+      role="navigation"
+      aria-label="Mobile navigation"
+    >
+      <div className="flex items-center justify-around h-14">
         {PRIMARY_TABS.map((tab) => {
           const isActive = pathname.startsWith(tab.href);
           const Icon = tab.icon;
@@ -62,12 +66,26 @@ export function MobileNav({ userRole }: MobileNavProps) {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium transition-colors min-h-[56px] justify-center ${
-                isActive
-                  ? "text-blue-600"
-                  : "text-slate-500 active:text-slate-900"
-              }`}
+              aria-current={isActive ? "page" : undefined}
+              className={`
+                relative flex flex-1 flex-col items-center gap-1 text-xs font-medium
+                min-h-[44px] min-w-[44px] justify-center
+                transition-all duration-150
+                active:scale-95
+                ${
+                  isActive
+                    ? "text-blue-600"
+                    : "text-slate-500 active:text-slate-900"
+                }
+              `}
             >
+              {/* Active indicator bar */}
+              {isActive && (
+                <span
+                  className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-blue-600"
+                  aria-hidden="true"
+                />
+              )}
               <Icon className="h-5 w-5" />
               {tab.label}
             </Link>
@@ -78,12 +96,25 @@ export function MobileNav({ userRole }: MobileNavProps) {
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
             <button
-              className={`flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium transition-colors min-h-[56px] justify-center ${
-                sheetOpen
-                  ? "text-blue-600"
-                  : "text-slate-500 active:text-slate-900"
-              }`}
+              aria-label="More navigation options"
+              className={`
+                relative flex flex-1 flex-col items-center gap-1 text-xs font-medium
+                min-h-[44px] min-w-[44px] justify-center
+                transition-all duration-150
+                active:scale-95
+                ${
+                  sheetOpen
+                    ? "text-blue-600"
+                    : "text-slate-500 active:text-slate-900"
+                }
+              `}
             >
+              {sheetOpen && (
+                <span
+                  className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-blue-600"
+                  aria-hidden="true"
+                />
+              )}
               <MoreHorizontal className="h-5 w-5" />
               More
             </button>
@@ -100,11 +131,17 @@ export function MobileNav({ userRole }: MobileNavProps) {
                     key={item.href}
                     href={item.href}
                     onClick={() => setSheetOpen(false)}
-                    className={`flex flex-col items-center gap-2 rounded-lg p-3 text-sm font-medium transition-colors ${
-                      isActive
-                        ? "bg-blue-50 text-blue-600"
-                        : "text-slate-600 hover:bg-slate-50"
-                    }`}
+                    className={`
+                      flex flex-col items-center gap-2 rounded-lg p-3 text-sm font-medium
+                      min-h-[44px] justify-center
+                      transition-all duration-150
+                      active:scale-95
+                      ${
+                        isActive
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-slate-600 hover:bg-slate-50"
+                      }
+                    `}
                   >
                     {item.label}
                   </Link>

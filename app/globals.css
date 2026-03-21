@@ -139,3 +139,29 @@
 .animate-slide-in-right {
   animation: slide-in-right 0.3s ease-out;
 }
+
+/* =========================================================================
+   D12 — Responsive & Mobile Utilities
+   ========================================================================= */
+
+@layer utilities {
+  /* Force flex items to stack vertically on mobile */
+  .mobile-stack {
+    @apply flex flex-col;
+  }
+  @screen sm {
+    .mobile-stack {
+      @apply flex-row;
+    }
+  }
+
+  /* Hidden on mobile, visible on md+ */
+  .mobile-hide {
+    @apply hidden md:block;
+  }
+
+  /* Full width on mobile, auto on sm+ */
+  .mobile-full {
+    @apply w-full sm:w-auto;
+  }
+}

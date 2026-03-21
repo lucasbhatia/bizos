@@ -106,7 +106,7 @@ export function CasesFilters({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         {/* Search */}
         <form onSubmit={handleSearch} className="flex gap-2">
           <div className="relative">
