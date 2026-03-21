@@ -25,10 +25,14 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refresh session — wrap in try-catch in case of malformed cookies
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // Malformed session cookie — treat as unauthenticated
+  }
 
   const { pathname } = request.nextUrl;
 
