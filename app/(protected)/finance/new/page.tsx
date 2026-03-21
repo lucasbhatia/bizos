@@ -1,11 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { NewInvoiceForm } from "./new-invoice-form";
 
 export default async function NewInvoicePage() {
-  const supabase = createClient();
+  const supabase = createServiceClient();
 
   const [clientsRes, casesRes] = await Promise.all([
     supabase

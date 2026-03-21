@@ -1,4 +1,4 @@
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser, createServiceClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,7 +51,7 @@ export default async function TasksPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const supabase = createClient();
+  const supabase = createServiceClient();
   const user = await getCurrentUser();
   const isManager = user && ["admin", "ops_manager", "broker_lead"].includes(user.role);
   const view = searchParams.view ?? "my";

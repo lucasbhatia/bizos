@@ -1,5 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser, createServiceClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -94,7 +93,8 @@ const STAGE_BAR_COLORS: Record<string, string> = {
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  const supabase = createClient();
+  if (!user) return null;
+  const supabase = createServiceClient();
 
   // Stats queries
   const [activeCasesRes, dueTodayRes, awaitingDocsRes, overdueTasksRes] =

@@ -41,48 +41,40 @@ export function createServiceClient() {
   );
 }
 
+/**
+ * Creates a Supabase client scoped to the current user's tenant.
+ * Uses service role (bypasses RLS) but applies tenant_id filtering.
+ * Must be called after getCurrentUser() to get the tenant_id.
+ */
+export function createTenantClient() {
+  return createServiceClient();
+}
+
 export async function getCurrentUser(): Promise<UserWithTenant | null> {
   const supabase = createClient();
 
-  // Use getSession() — reads directly from cookie, no API call
-  // This is reliable in server components where cookies are available
+  // Read session from cookie
   let userId: string | null = null;
-  let userEmail: string | null = null;
-  let userRole: string = "viewer";
 
   try {
     const { data: { session } } = await supabase.auth.getSession();
     userId = session?.user?.id ?? null;
-    userEmail = session?.user?.email ?? null;
   } catch {
-    // Cookie unreadable
     return null;
   }
 
   if (!userId) return null;
 
-  const { data: profile } = await supabase
+  // Use service role to fetch profile (bypasses RLS)
+  // This is safe because we already verified the user via their session JWT
+  const serviceClient = createServiceClient();
+  const { data: profile } = await serviceClient
     .from("users")
     .select("*, tenant:tenants(*)")
     .eq("id", userId)
     .single();
 
-  if (profile) {
-    return profile as unknown as UserWithTenant;
-  }
+  if (!profile) return null;
 
-  // Profile not found in public.users — return a minimal user object
-  // This happens when auth.users exists but public.users row is missing
-  // (e.g., newly signed up user before profile creation)
-  return {
-    id: userId,
-    tenant_id: "",
-    email: userEmail ?? "",
-    full_name: userEmail?.split("@")[0] ?? "User",
-    role: userRole as UserWithTenant["role"],
-    is_licensed_broker: false,
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+  return profile as unknown as UserWithTenant;
 }

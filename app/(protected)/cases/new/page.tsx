@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { NewCaseWizard } from "./new-case-wizard";
 
 export default async function NewCasePage() {
-  const supabase = createClient();
+  const supabase = createServiceClient();
 
   const [clientsRes, usersRes, busUnitsRes] = await Promise.all([
     supabase.from("client_accounts").select("id, name").eq("is_active", true).order("name"),

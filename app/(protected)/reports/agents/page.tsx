@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser, createServiceClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -121,7 +121,7 @@ export default async function AgentPerformancePage() {
     redirect("/dashboard");
   }
 
-  const supabase = createClient();
+  const supabase = createServiceClient();
 
   // Fetch all agent logs
   const { data: agentLogs } = await supabase

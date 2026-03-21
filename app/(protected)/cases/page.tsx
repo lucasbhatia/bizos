@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -33,7 +33,7 @@ export default async function CasesPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const supabase = createClient();
+  const supabase = createServiceClient();
   const page = parseInt(searchParams.page ?? "1", 10);
   const offset = (page - 1) * PAGE_SIZE;
   const sortField = searchParams.sort ?? "created_at";
