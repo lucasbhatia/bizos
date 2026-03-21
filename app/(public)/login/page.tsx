@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,33 +13,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const supabase = createClient();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      const data = await res.json() as { success?: boolean; error?: string };
-
-      if (!res.ok || !data.success) {
-        setError(data.error ?? "Login failed");
-        setLoading(false);
-        return;
-      }
-
-      // Server-side login sets cookies properly — now redirect
-      window.location.href = "/dashboard";
-    } catch {
-      setError("Network error. Please try again.");
+    if (authError) {
+      setError(authError.message);
       setLoading(false);
+      return;
     }
+
+    // Redirect with full page load so server reads the new cookies
+    window.location.replace("/dashboard");
   }
 
   return (
