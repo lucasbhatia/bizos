@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,6 +10,7 @@ import { CaseTimeline } from "./case-timeline";
 import { CaseDocuments } from "./case-documents";
 import { CaseTasks } from "./case-tasks";
 import { CaseActivity } from "./case-activity";
+import { CaseClassification } from "./case-classification";
 import { Ship, Plane, Truck, TrainFront, AlertTriangle } from "lucide-react";
 
 const MODE_ICONS: Record<TransportMode, React.ElementType> = {
@@ -62,6 +63,7 @@ export default async function CaseDetailPage({
 
   if (!entryCase) notFound();
 
+  const currentUser = await getCurrentUser();
   const client = getRelation(entryCase.client_account);
   const assignee = getRelation(entryCase.assigned_user);
   const bu = getRelation(entryCase.business_unit);
@@ -173,6 +175,7 @@ export default async function CaseDetailPage({
           <TabsTrigger value="tasks">
             Tasks ({openTasks} open)
           </TabsTrigger>
+          <TabsTrigger value="classification">Classification</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
@@ -240,6 +243,21 @@ export default async function CaseDetailPage({
 
         <TabsContent value="tasks" className="mt-4">
           <CaseTasks caseId={entryCase.id} tasks={tasks} />
+        </TabsContent>
+
+        <TabsContent value="classification" className="mt-4">
+          <CaseClassification
+            caseId={entryCase.id}
+            documents={documents.map((d) => ({
+              id: d.id,
+              doc_type: d.doc_type,
+              extracted_data: d.extracted_data ?? {},
+            }))}
+            isLicensedBroker={currentUser?.is_licensed_broker ?? false}
+            approvedClassifications={
+              ((entryCase.metadata as Record<string, unknown>)?.approved_classifications as { line_item_index: number; hts_code: string }[]) ?? []
+            }
+          />
         </TabsContent>
 
         <TabsContent value="activity" className="mt-4">
