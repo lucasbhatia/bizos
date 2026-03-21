@@ -286,25 +286,20 @@ export const REQUIRED_DOCS_BY_MODE: Record<TransportMode, DocType[]> = {
   rail: ['commercial_invoice', 'packing_list', 'bill_of_lading', 'poa'],
 };
 
-// Status display config
-export const STATUS_COLORS: Record<CaseStatus, string> = {
-  intake: 'bg-yellow-100 text-yellow-800',
-  awaiting_docs: 'bg-yellow-100 text-yellow-800',
-  docs_validated: 'bg-blue-100 text-blue-800',
-  classification_review: 'bg-blue-100 text-blue-800',
-  entry_prep: 'bg-blue-100 text-blue-800',
-  submitted: 'bg-purple-100 text-purple-800',
-  govt_review: 'bg-purple-100 text-purple-800',
-  hold: 'bg-red-100 text-red-800',
-  released: 'bg-green-100 text-green-800',
-  billing: 'bg-green-100 text-green-800',
-  closed: 'bg-gray-100 text-gray-800',
-  archived: 'bg-gray-100 text-gray-800',
-};
+// Status display config — derived from design tokens
+// These flatten the ColorToken to a single className string for backward compat.
+import { STATUS_COLOR_MAP, PRIORITY_COLOR_MAP } from "@/lib/design/tokens";
 
-export const PRIORITY_COLORS: Record<PriorityLevel, string> = {
-  low: 'bg-gray-100 text-gray-800',
-  normal: 'bg-blue-100 text-blue-800',
-  high: 'bg-orange-100 text-orange-800',
-  urgent: 'bg-red-100 text-red-800',
-};
+export const STATUS_COLORS: Record<CaseStatus, string> = Object.fromEntries(
+  (Object.keys(STATUS_COLOR_MAP) as CaseStatus[]).map((s) => [
+    s,
+    `${STATUS_COLOR_MAP[s].bg} ${STATUS_COLOR_MAP[s].text}`,
+  ]),
+) as Record<CaseStatus, string>;
+
+export const PRIORITY_COLORS: Record<PriorityLevel, string> = Object.fromEntries(
+  (Object.keys(PRIORITY_COLOR_MAP) as PriorityLevel[]).map((p) => [
+    p,
+    `${PRIORITY_COLOR_MAP[p].bg} ${PRIORITY_COLOR_MAP[p].text}`,
+  ]),
+) as Record<PriorityLevel, string>;

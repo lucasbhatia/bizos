@@ -24,6 +24,18 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+
+    /* BizOS brand tokens — defaults (overridable by ThemeProvider) */
+    --bizos-navy: 15 23 42;
+    --bizos-navy-light: 30 41 59;
+    --bizos-accent-blue: 37 99 235;
+    --bizos-teal: 13 148 136;
+
+    /* Spacing scale */
+    --space-page-x: 1.5rem;
+    --space-page-y: 1.5rem;
+    --space-section: 2rem;
+    --space-card: 1.25rem;
   }
 
   .dark {
@@ -54,6 +66,15 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  /* Monospace utility for case numbers, HTS codes, entry numbers */
+  .font-mono-code {
+    font-family: var(--font-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
   }
 }
