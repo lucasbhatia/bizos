@@ -11,6 +11,7 @@ import { CaseDocuments } from "./case-documents";
 import { CaseTasks } from "./case-tasks";
 import { CaseActivity } from "./case-activity";
 import { CaseClassification } from "./case-classification";
+import { CaseCommunications } from "./case-communications";
 import { Ship, Plane, Truck, TrainFront, AlertTriangle } from "lucide-react";
 
 const MODE_ICONS: Record<TransportMode, React.ElementType> = {
@@ -176,6 +177,7 @@ export default async function CaseDetailPage({
             Tasks ({openTasks} open)
           </TabsTrigger>
           <TabsTrigger value="classification">Classification</TabsTrigger>
+          <TabsTrigger value="comms">Communications</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
@@ -256,6 +258,32 @@ export default async function CaseDetailPage({
             isLicensedBroker={currentUser?.is_licensed_broker ?? false}
             approvedClassifications={
               ((entryCase.metadata as Record<string, unknown>)?.approved_classifications as { line_item_index: number; hts_code: string }[]) ?? []
+            }
+          />
+        </TabsContent>
+
+        <TabsContent value="comms" className="mt-4">
+          <CaseCommunications
+            caseId={entryCase.id}
+            commDrafts={
+              ((entryCase.metadata as Record<string, unknown>)?.comm_drafts as {
+                event_type: string;
+                subject: string;
+                body: string;
+                contact_name: string;
+                contact_email: string;
+                generated_at: string;
+                status: string;
+              }[]) ?? []
+            }
+            invoiceDraft={
+              ((entryCase.metadata as Record<string, unknown>)?.draft_invoice as {
+                invoice_lines: { description: string; category: string; quantity: number; unit_price: number; total: number }[];
+                subtotal: number;
+                total: number;
+                currency: string;
+                generated_at: string;
+              }) ?? null
             }
           />
         </TabsContent>

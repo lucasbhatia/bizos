@@ -4,6 +4,8 @@ import { registerDocumentParserAgent } from './document-parser';
 import { registerIntakeAgent } from './intake';
 import { registerClassificationAgent } from './classification';
 import { registerOpsCoordinatorAgent } from './ops-coordinator';
+import { registerFinanceAgent } from './finance';
+import { registerClientCommsAgent } from './client-comms';
 
 let initialized = false;
 
@@ -15,7 +17,8 @@ export function initializeAgents(): void {
   registerIntakeAgent();
   registerClassificationAgent();
   registerOpsCoordinatorAgent();
-  // Future agents will be registered here
+  registerFinanceAgent();
+  registerClientCommsAgent();
 
   initialized = true;
 }
