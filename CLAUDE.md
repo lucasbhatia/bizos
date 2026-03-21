@@ -58,9 +58,9 @@ Always reference it before starting a new step.
 
 ## Current Build Status
 - Phase: 2 (AI Agents Layer)
-- Phase: 3 (Integrations + Client Portal)
-- Next: Step 19
-- Completed: Steps 1–18
+- Phase: 3 COMPLETE
+- Next: Phase 4 (Scale + Expand), Step 31
+- Completed: Steps 1–30
 
 ## Build Log
 - [2026-03-20] Step 1: Project initialization ✓ (commit 49130cd)
@@ -81,6 +81,13 @@ Always reference it before starting a new step.
 - [2026-03-20] Step 16: Classification support agent ✓ (commit 9cd3227)
 - [2026-03-20] Step 17: Ops coordinator agent ✓ (commit 84de675)
 - [2026-03-20] Step 18: Finance + Client Comms agents ✓ (commit 5dc3c35)
+- [2026-03-20] Step 19: Gmail integration ✓ (commit 1b5315a)
+- [2026-03-20] Step 20: Outbound email sending ✓ (commit 4a55a26)
+- [2026-03-20] Step 21: Client portal ✓ (commit 496eb35)
+- [2026-03-20] Steps 22-23: Portal messages + threading ✓ (commit b79145f)
+- [2026-03-20] Steps 24-25: Invoice system + QuickBooks stub ✓ (commit 229feba)
+- [2026-03-20] Steps 26-27: Executive dashboards + brief agent ✓ (commit 4e848db)
+- [2026-03-20] Steps 28-30: Filing packet + EDI bridge + agent perf ✓ (commit 5004553)
 
 ## Build Rules
 - After EVERY step: run /step-complete to commit and update status
