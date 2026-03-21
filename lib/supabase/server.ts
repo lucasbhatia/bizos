@@ -44,13 +44,32 @@ export function createServiceClient() {
 export async function getCurrentUser(): Promise<UserWithTenant | null> {
   const supabase = createClient();
 
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) return null;
+  // Try getUser() first (validates with Supabase Auth server)
+  // Fall back to getSession() if getUser() fails (reads from cookie directly)
+  let userId: string | null = null;
+
+  try {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    userId = authUser?.id ?? null;
+  } catch {
+    // getUser() failed — try getSession() as fallback
+  }
+
+  if (!userId) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      userId = session?.user?.id ?? null;
+    } catch {
+      // Both failed
+    }
+  }
+
+  if (!userId) return null;
 
   const { data: profile } = await supabase
     .from("users")
     .select("*, tenant:tenants(*)")
-    .eq("id", authUser.id)
+    .eq("id", userId)
     .single();
 
   if (!profile) return null;
