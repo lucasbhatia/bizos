@@ -114,10 +114,15 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  const { pathname } = request.nextUrl;
+
+  // Public routes that don't require auth
+  const publicRoutes = ["/login", "/signup", "/portal"];
+  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
+    || pathname === "/";
+
   // Apply security headers to all responses
   applySecurityHeaders(supabaseResponse);
-
-  const { pathname } = request.nextUrl;
 
   // Rate limiting for API routes
   if (pathname.startsWith("/api")) {
@@ -148,7 +153,24 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Refresh session — wrap in try-catch in case of malformed cookies
+  // For public routes, allow access without checking session
+  // This prevents redirect loops when cookies are malformed
+  if (isPublicRoute) {
+    // Still try to check if user is logged in to redirect away from login
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard";
+        return NextResponse.redirect(url);
+      }
+    } catch {
+      // Malformed cookie on public route — just let them through
+    }
+    return supabaseResponse;
+  }
+
+  // For protected routes, check authentication
   let user = null;
   try {
     const { data } = await supabase.auth.getUser();
@@ -157,19 +179,9 @@ export async function middleware(request: NextRequest) {
     // Malformed session cookie — treat as unauthenticated
   }
 
-  // Public routes that don't require auth
-  const publicRoutes = ["/login", "/signup"];
-  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
-
-  if (!user && !isPublicRoute) {
+  if (!user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
-
-  if (user && isPublicRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 
