@@ -4,6 +4,12 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { InvoicesFilters } from "./invoices-filters";
 import { InvoicesTable } from "./invoices-table";
+import {
+  DollarSign,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
 
 interface SearchParams {
   status?: string;
@@ -14,6 +20,13 @@ interface SearchParams {
 }
 
 const PAGE_SIZE = 25;
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
+}
 
 export default async function FinancePage({
   searchParams,
@@ -56,17 +69,23 @@ export default async function FinancePage({
 
   // Stats queries
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const monthStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    1
+  ).toISOString();
 
-  const [outstandingRes, overdueRes, paidRes] = await Promise.all([
+  const [invoicedRes, outstandingRes, overdueRes, paidRes] = await Promise.all([
+    supabase
+      .from("invoices")
+      .select("total")
+      .gte("created_at", monthStart)
+      .not("status", "eq", "cancelled"),
     supabase
       .from("invoices")
       .select("total")
       .in("status", ["sent", "overdue"]),
-    supabase
-      .from("invoices")
-      .select("total")
-      .eq("status", "overdue"),
+    supabase.from("invoices").select("total").eq("status", "overdue"),
     supabase
       .from("invoices")
       .select("total")
@@ -74,6 +93,10 @@ export default async function FinancePage({
       .gte("paid_at", monthStart),
   ]);
 
+  const invoicedThisMonth = (invoicedRes.data ?? []).reduce(
+    (sum, inv) => sum + Number(inv.total),
+    0
+  );
   const totalOutstanding = (outstandingRes.data ?? []).reduce(
     (sum, inv) => sum + Number(inv.total),
     0
@@ -87,6 +110,65 @@ export default async function FinancePage({
     0
   );
 
+  // AR aging buckets
+  const { data: arInvoices } = await supabase
+    .from("invoices")
+    .select("total, due_date")
+    .in("status", ["sent", "overdue"]);
+
+  let current = 0;
+  let days30 = 0;
+  let days60 = 0;
+  let days90plus = 0;
+
+  for (const inv of arInvoices ?? []) {
+    if (!inv.due_date) {
+      current += Number(inv.total);
+      continue;
+    }
+    const dueDate = new Date(inv.due_date);
+    const daysPast = Math.floor(
+      (now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (daysPast <= 0) {
+      current += Number(inv.total);
+    } else if (daysPast <= 30) {
+      days30 += Number(inv.total);
+    } else if (daysPast <= 60) {
+      days60 += Number(inv.total);
+    } else {
+      days90plus += Number(inv.total);
+    }
+  }
+
+  const arTotal = current + days30 + days60 + days90plus;
+  const arBuckets = [
+    {
+      label: "Current",
+      amount: current,
+      pct: arTotal > 0 ? (current / arTotal) * 100 : 0,
+      color: "bg-green-500",
+    },
+    {
+      label: "1-30 days",
+      amount: days30,
+      pct: arTotal > 0 ? (days30 / arTotal) * 100 : 0,
+      color: "bg-yellow-500",
+    },
+    {
+      label: "31-60 days",
+      amount: days60,
+      pct: arTotal > 0 ? (days60 / arTotal) * 100 : 0,
+      color: "bg-orange-500",
+    },
+    {
+      label: "90+ days",
+      amount: days90plus,
+      pct: arTotal > 0 ? (days90plus / arTotal) * 100 : 0,
+      color: "bg-red-500",
+    },
+  ];
+
   // Get filter options
   const { data: clients } = await supabase
     .from("client_accounts")
@@ -96,43 +178,44 @@ export default async function FinancePage({
 
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
 
-  function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  }
-
   const stats = [
     {
-      label: "Total Outstanding",
+      label: "Invoiced This Month",
+      value: formatCurrency(invoicedThisMonth),
+      icon: DollarSign,
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-600",
+    },
+    {
+      label: "Collected This Month",
+      value: formatCurrency(paidThisMonth),
+      icon: CheckCircle2,
+      iconBg: "bg-green-50",
+      iconColor: "text-green-600",
+    },
+    {
+      label: "Outstanding",
       value: formatCurrency(totalOutstanding),
-      color: totalOutstanding > 0 ? "text-blue-600" : "text-green-600",
+      icon: TrendingUp,
+      iconBg: "bg-slate-50",
+      iconColor: "text-slate-600",
     },
     {
       label: "Overdue",
       value: formatCurrency(totalOverdue),
-      color: totalOverdue > 0 ? "text-red-600" : "text-green-600",
-    },
-    {
-      label: "Paid This Month",
-      value: formatCurrency(paidThisMonth),
-      color: "text-green-600",
-    },
-    {
-      label: "Total Invoices",
-      value: String(count ?? 0),
-      color: "text-slate-900",
+      icon: AlertCircle,
+      iconBg: totalOverdue > 0 ? "bg-red-50" : "bg-green-50",
+      iconColor: totalOverdue > 0 ? "text-red-600" : "text-green-600",
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Finance</h1>
           <p className="text-sm text-slate-500">
-            Manage invoices and payments
+            Invoices, payments, and accounts receivable
           </p>
         </div>
         <Button asChild>
@@ -140,17 +223,78 @@ export default async function FinancePage({
         </Button>
       </div>
 
-      {/* Stats Row */}
+      {/* Revenue metrics row */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium text-slate-500">{stat.label}</p>
-              <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-            </CardContent>
-          </Card>
-        ))}
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card
+              key={stat.label}
+              className="transition-all hover:-translate-y-px hover:shadow-md"
+            >
+              <CardContent className="flex items-center gap-4 p-5">
+                <div
+                  className={`flex h-11 w-11 items-center justify-center rounded-xl ${stat.iconBg}`}
+                >
+                  <Icon className={`h-5 w-5 ${stat.iconColor}`} />
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+                    {stat.label}
+                  </p>
+                  <p className="text-xl font-bold text-slate-900">
+                    {stat.value}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
+
+      {/* AR Aging */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Accounts Receivable Aging</CardTitle>
+            <span className="text-sm font-semibold text-slate-700">
+              {formatCurrency(arTotal)} total
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Stacked bar */}
+          <div className="mb-4 flex h-4 overflow-hidden rounded-full bg-slate-100">
+            {arBuckets.map(
+              (bucket) =>
+                bucket.pct > 0 && (
+                  <div
+                    key={bucket.label}
+                    className={`${bucket.color} transition-all`}
+                    style={{ width: `${bucket.pct}%` }}
+                  />
+                )
+            )}
+          </div>
+
+          {/* Legend */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {arBuckets.map((bucket) => (
+              <div key={bucket.label} className="flex items-center gap-2">
+                <div className={`h-3 w-3 rounded-sm ${bucket.color}`} />
+                <div>
+                  <p className="text-xs font-medium text-slate-600">
+                    {bucket.label}
+                  </p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {formatCurrency(bucket.amount)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <InvoicesFilters
         clients={clients ?? []}

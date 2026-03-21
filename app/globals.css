@@ -78,3 +78,64 @@
     letter-spacing: -0.01em;
   }
 }
+
+/* =========================================================================
+   D11 — Micro-Interactions & Animations
+   ========================================================================= */
+
+/* Page fade-in on load */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-in {
+  animation: page-fade-in 0.4s ease-out;
+}
+
+/* Card hover lift — applied via utility class or globally to .card-hover */
+@layer utilities {
+  .card-hover {
+    @apply transition-all duration-200;
+  }
+  .card-hover:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 4px 6px -1px rgb(0 0 0 / 0.07),
+      0 2px 4px -2px rgb(0 0 0 / 0.05);
+  }
+}
+
+/* Subtle transitions on all interactive elements */
+@layer base {
+  a,
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    @apply transition-colors duration-150;
+  }
+}
+
+/* Slide-in from right for toast notifications */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
