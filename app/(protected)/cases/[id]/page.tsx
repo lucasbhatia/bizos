@@ -60,6 +60,13 @@ const MODE_ICONS: Record<TransportMode, React.ElementType> = {
   rail: TrainFront,
 };
 
+const MODE_COLORS: Record<TransportMode, string> = {
+  ocean: "bg-blue-600",
+  air: "bg-sky-500",
+  truck: "bg-amber-600",
+  rail: "bg-emerald-600",
+};
+
 const STATUS_ORDER: CaseStatus[] = [
   "intake",
   "awaiting_docs",
@@ -120,14 +127,27 @@ function getRelation<T>(val: T | T[] | null): T | null {
   return val;
 }
 
-function getEtaCountdown(eta: string | null): string {
-  if (!eta) return "\u2014";
+function getEtaCountdown(eta: string | null): { text: string; overdue: boolean } {
+  if (!eta) return { text: "\u2014", overdue: false };
   const diff = new Date(eta).getTime() - Date.now();
-  if (diff < 0) return "Arrived";
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days === 0) return "Today";
-  if (days === 1) return "1 day";
-  return `${days} days`;
+  const absDays = Math.abs(Math.floor(diff / (1000 * 60 * 60 * 24)));
+  if (diff < 0) {
+    if (absDays === 0) return { text: "today", overdue: false };
+    return { text: `${absDays}d ago`, overdue: true };
+  }
+  if (absDays === 0) return { text: "today", overdue: false };
+  if (absDays === 1) return { text: "in 1 day", overdue: false };
+  return { text: `in ${absDays} days`, overdue: false };
+}
+
+function getInitials(name: string | undefined | null): string {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 }
 
 // ============================================================================
@@ -150,25 +170,31 @@ function StatusPipeline({
       {STATUS_ORDER.map((status, idx) => {
         const isCompleted = visitedStatuses.has(status) && status !== currentStatus;
         const isCurrent = status === currentStatus;
+        const isBeforeCurrent = idx < currentIdx;
 
         return (
           <div key={status} className="flex items-center">
             {/* Connecting line before dot (except first) */}
             {idx > 0 && (
               <div
-                className={`h-0.5 w-4 sm:w-6 lg:w-8 ${
-                  isCompleted || isCurrent ? "bg-green-400" : "bg-slate-200"
+                className={`h-0.5 w-3 sm:w-5 lg:w-7 transition-colors ${
+                  isCompleted || isCurrent || isBeforeCurrent
+                    ? "bg-green-400"
+                    : "bg-slate-200"
                 }`}
               />
             )}
             {/* Dot */}
             <div className="group relative flex flex-col items-center">
-              {isCompleted ? (
-                <div className="h-3 w-3 rounded-full bg-green-500" />
+              {isCompleted || (isBeforeCurrent && !isCurrent) ? (
+                <div className="h-2.5 w-2.5 rounded-full bg-green-500 transition-colors" />
               ) : isCurrent ? (
-                <div className="h-3.5 w-3.5 rounded-full border-2 border-blue-500 bg-blue-500 ring-2 ring-blue-200" />
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute h-5 w-5 rounded-full bg-blue-400/30 animate-ping" />
+                  <div className="relative h-3 w-3 rounded-full bg-blue-500 ring-2 ring-blue-200" />
+                </div>
               ) : (
-                <div className="h-3 w-3 rounded-full border-2 border-slate-300 bg-white" />
+                <div className="h-2.5 w-2.5 rounded-full border-[1.5px] border-slate-300 bg-white" />
               )}
               {/* Label on hover / always for current */}
               <span
@@ -188,8 +214,11 @@ function StatusPipeline({
       })}
       {isOnHold && (
         <div className="flex items-center">
-          <div className="h-0.5 w-4 sm:w-6 lg:w-8 bg-red-300" />
-          <div className="h-3.5 w-3.5 rounded-full bg-red-500 ring-2 ring-red-200" />
+          <div className="h-0.5 w-3 sm:w-5 lg:w-7 bg-red-300" />
+          <div className="relative flex items-center justify-center">
+            <div className="absolute h-5 w-5 rounded-full bg-red-400/30 animate-ping" />
+            <div className="h-3 w-3 rounded-full bg-red-500 ring-2 ring-red-200" />
+          </div>
         </div>
       )}
     </div>
@@ -222,6 +251,7 @@ export default async function CaseDetailPage({
   const assignee = getRelation(entryCase.assigned_user);
   const bu = getRelation(entryCase.business_unit);
   const ModeIcon = MODE_ICONS[entryCase.mode_of_transport as TransportMode];
+  const modeColor = MODE_COLORS[entryCase.mode_of_transport as TransportMode];
   const validNextStatuses =
     VALID_STATUS_TRANSITIONS[entryCase.status as CaseStatus] ?? [];
   const requiredDocs =
@@ -278,13 +308,10 @@ export default async function CaseDetailPage({
   const isOcean = mode === "ocean";
   const hasTrucking = mode === "ocean" || mode === "truck";
 
+  const docsUploaded = requiredDocs.filter((d) => uploadedDocTypes.has(d)).length;
   const docProgress =
     requiredDocs.length > 0
-      ? Math.round(
-          (requiredDocs.filter((d) => uploadedDocTypes.has(d)).length /
-            requiredDocs.length) *
-            100
-        )
+      ? Math.round((docsUploaded / requiredDocs.length) * 100)
       : 0;
 
   const taskProgress =
@@ -292,169 +319,230 @@ export default async function CaseDetailPage({
       ? Math.round((completedTasks / tasks.length) * 100)
       : 0;
 
+  const etaInfo = getEtaCountdown(entryCase.eta);
+
   return (
     <div className="space-y-0">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-sm text-slate-500 mb-4">
-        <Link href="/cases" className="hover:text-slate-800 transition-colors">
+      <nav className="flex items-center gap-1.5 text-sm text-slate-500 mb-3">
+        <Link
+          href="/cases"
+          className="hover:text-slate-800 transition-colors font-medium"
+        >
           Cases
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
         <span className="font-medium text-slate-800">
           {entryCase.case_number}
         </span>
       </nav>
 
       {/* ================================================================ */}
-      {/* Case Header — sticky-ish full-width band                        */}
+      {/* Case Header Card                                                 */}
       {/* ================================================================ */}
-      <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-slate-50/95 backdrop-blur border-b border-slate-200 mb-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          {/* Left: Case number + client */}
-          <div className="flex items-center gap-4 min-w-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900">
-              <ModeIcon className="h-5 w-5 text-white" />
+      <Card className="mb-6 shadow-sm border-slate-200 overflow-hidden">
+        <CardContent className="p-0">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between p-5">
+            {/* Left: Icon + Case number + Client */}
+            <div className="flex items-center gap-4 min-w-0">
+              <div
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${modeColor} shadow-sm`}
+              >
+                <ModeIcon className="h-6 w-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-slate-900 font-mono tracking-tight truncate">
+                  {entryCase.case_number}
+                </h1>
+                <p className="text-sm text-slate-500 truncate">
+                  {client?.name ?? "Unknown client"}
+                  {bu ? ` \u2014 ${bu.name}` : ""}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h1 className="text-xl font-bold text-slate-900 font-mono tracking-tight truncate">
-                {entryCase.case_number}
-              </h1>
-              <p className="text-sm text-slate-500 truncate">
-                {client?.name ?? "Unknown client"}
-                {bu ? ` \u2014 ${bu.name}` : ""}
-              </p>
+
+            {/* Center: Status pipeline */}
+            <div className="hidden lg:flex items-center justify-center flex-1 px-6 pb-2">
+              <StatusPipeline
+                currentStatus={entryCase.status as CaseStatus}
+                workflowEvents={workflowEvents}
+              />
+            </div>
+
+            {/* Right: Priority, ETA, assignee, actions */}
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <Badge
+                className={PRIORITY_COLORS[entryCase.priority as PriorityLevel]}
+                variant="secondary"
+              >
+                {entryCase.priority === "urgent" && (
+                  <AlertTriangle className="mr-1 h-3 w-3" />
+                )}
+                {formatLabel(entryCase.priority)}
+              </Badge>
+
+              <div
+                className={`flex items-center gap-1.5 text-sm ${
+                  etaInfo.overdue ? "text-red-600 font-semibold" : "text-slate-600"
+                }`}
+              >
+                <Clock className="h-3.5 w-3.5" />
+                <span>{etaInfo.text}</span>
+              </div>
+
+              {assignee ? (
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-[11px] font-semibold text-slate-700">
+                    {getInitials(assignee.full_name)}
+                  </div>
+                  <span className="hidden sm:inline">
+                    {assignee.full_name}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-sm text-slate-400">
+                  <User className="h-3.5 w-3.5" />
+                  <span>Unassigned</span>
+                </div>
+              )}
+
+              <StatusChangeDropdown
+                caseId={entryCase.id}
+                currentStatus={entryCase.status as CaseStatus}
+                validNextStatuses={validNextStatuses}
+              />
             </div>
           </div>
 
-          {/* Center: Status pipeline */}
-          <div className="hidden md:flex items-center justify-center flex-1 px-4 pb-3">
+          {/* Mobile pipeline (visible on small / medium screens) */}
+          <div className="border-t border-slate-100 px-5 py-3 lg:hidden overflow-x-auto">
             <StatusPipeline
               currentStatus={entryCase.status as CaseStatus}
               workflowEvents={workflowEvents}
             />
           </div>
-
-          {/* Right: Priority, ETA, assignee, actions */}
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge
-              className={
-                PRIORITY_COLORS[entryCase.priority as PriorityLevel]
-              }
-              variant="secondary"
-            >
-              {entryCase.priority === "urgent" && (
-                <AlertTriangle className="mr-1 h-3 w-3" />
-              )}
-              {formatLabel(entryCase.priority)}
-            </Badge>
-
-            <div className="flex items-center gap-1.5 text-sm text-slate-600">
-              <Clock className="h-3.5 w-3.5" />
-              <span className="font-medium">
-                {getEtaCountdown(entryCase.eta)}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-sm text-slate-600">
-              <User className="h-3.5 w-3.5" />
-              <span>{assignee?.full_name ?? "Unassigned"}</span>
-            </div>
-
-            <StatusChangeDropdown
-              caseId={entryCase.id}
-              currentStatus={entryCase.status as CaseStatus}
-              validNextStatuses={validNextStatuses}
-            />
-          </div>
-        </div>
-
-        {/* Mobile pipeline (visible on small screens) */}
-        <div className="mt-3 flex md:hidden overflow-x-auto pb-2">
-          <StatusPipeline
-            currentStatus={entryCase.status as CaseStatus}
-            workflowEvents={workflowEvents}
-          />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* ================================================================ */}
       {/* Tabs                                                             */}
       {/* ================================================================ */}
       <Tabs defaultValue="overview">
-        <TabsList className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="overview" className="gap-1.5">
-            <Eye className="h-3.5 w-3.5" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="gap-1.5">
-            <FileText className="h-3.5 w-3.5" />
-            Documents
-            <Badge
-              variant="secondary"
-              className="ml-1 h-5 min-w-[1.25rem] px-1 text-[10px]"
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="w-full justify-start bg-transparent border-b border-slate-200 rounded-none h-auto p-0 gap-0">
+            <TabsTrigger
+              value="overview"
+              className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
             >
-              {documents.length}/{requiredDocs.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="tasks" className="gap-1.5">
-            <ListChecks className="h-3.5 w-3.5" />
-            Tasks
-            {openTasks > 0 && (
+              <Eye className="h-3.5 w-3.5" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value="documents"
+              className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Docs
               <Badge
                 variant="secondary"
-                className="ml-1 h-5 min-w-[1.25rem] px-1 text-[10px] bg-amber-100 text-amber-800"
+                className="ml-1 h-5 min-w-[1.25rem] px-1.5 text-[10px] font-medium"
               >
-                {openTasks}
+                {documents.length}/{requiredDocs.length}
               </Badge>
+            </TabsTrigger>
+            <TabsTrigger
+              value="tasks"
+              className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
+            >
+              <ListChecks className="h-3.5 w-3.5" />
+              Tasks
+              {openTasks > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-1 h-5 min-w-[1.25rem] px-1.5 text-[10px] font-medium bg-amber-100 text-amber-800"
+                >
+                  {openTasks}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="classification"
+              className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Classification
+            </TabsTrigger>
+            <TabsTrigger
+              value="filing"
+              className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
+            >
+              <Send className="h-3.5 w-3.5" />
+              Filing
+            </TabsTrigger>
+            <TabsTrigger
+              value="messages"
+              className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              Messages
+            </TabsTrigger>
+            <TabsTrigger
+              value="comms"
+              className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
+            >
+              <Mail className="h-3.5 w-3.5" />
+              Comms
+            </TabsTrigger>
+            <TabsTrigger
+              value="activity"
+              className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
+            >
+              <Activity className="h-3.5 w-3.5" />
+              Activity
+            </TabsTrigger>
+            {isOcean && (
+              <TabsTrigger
+                value="isf"
+                className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
+              >
+                <Shield className="h-3.5 w-3.5" />
+                ISF
+              </TabsTrigger>
             )}
-          </TabsTrigger>
-          <TabsTrigger value="classification" className="gap-1.5">
-            <Layers className="h-3.5 w-3.5" />
-            Classification
-          </TabsTrigger>
-          <TabsTrigger value="filing" className="gap-1.5">
-            <Send className="h-3.5 w-3.5" />
-            Filing
-          </TabsTrigger>
-          <TabsTrigger value="messages" className="gap-1.5">
-            <MessageSquare className="h-3.5 w-3.5" />
-            Messages
-          </TabsTrigger>
-          <TabsTrigger value="comms" className="gap-1.5">
-            <Mail className="h-3.5 w-3.5" />
-            Comms
-          </TabsTrigger>
-          <TabsTrigger value="activity" className="gap-1.5">
-            <Activity className="h-3.5 w-3.5" />
-            Activity
-          </TabsTrigger>
-          {isOcean && (
-            <TabsTrigger value="isf" className="gap-1.5">
-              <Shield className="h-3.5 w-3.5" />
-              ISF
+            <TabsTrigger
+              value="pga"
+              className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
+            >
+              <Package className="h-3.5 w-3.5" />
+              PGA
             </TabsTrigger>
-          )}
-          <TabsTrigger value="pga" className="gap-1.5">
-            <Package className="h-3.5 w-3.5" />
-            PGA
-          </TabsTrigger>
-          {isOceanOrAir && (
-            <TabsTrigger value="freight" className="gap-1.5">
-              <Anchor className="h-3.5 w-3.5" />
-              Freight
+            {isOceanOrAir && (
+              <TabsTrigger
+                value="freight"
+                className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
+              >
+                <Anchor className="h-3.5 w-3.5" />
+                Freight
+              </TabsTrigger>
+            )}
+            {hasTrucking && (
+              <TabsTrigger
+                value="drayage"
+                className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
+              >
+                <Truck className="h-3.5 w-3.5" />
+                Drayage
+              </TabsTrigger>
+            )}
+            <TabsTrigger
+              value="tracking"
+              className="gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-semibold px-4 py-2.5 text-sm text-slate-600 data-[state=active]:text-blue-700"
+            >
+              <MapPin className="h-3.5 w-3.5" />
+              Tracking
             </TabsTrigger>
-          )}
-          {hasTrucking && (
-            <TabsTrigger value="drayage" className="gap-1.5">
-              <Truck className="h-3.5 w-3.5" />
-              Drayage
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="tracking" className="gap-1.5">
-            <MapPin className="h-3.5 w-3.5" />
-            Tracking
-          </TabsTrigger>
-        </TabsList>
+          </TabsList>
+        </div>
 
         {/* ============================================================== */}
         {/* Overview Tab                                                    */}
@@ -464,20 +552,22 @@ export default async function CaseDetailPage({
             {/* Left column */}
             <div className="space-y-6">
               {/* Shipment Details */}
-              <Card>
-                <CardHeader>
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <Ship className="h-4 w-4 text-slate-500" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-50">
+                      <Ship className="h-4 w-4 text-blue-600" />
+                    </div>
                     Shipment Details
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-xs font-medium text-slate-500">
+                      <p className="text-xs font-medium uppercase tracking-wider text-slate-400 mb-1">
                         Mode
                       </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="flex items-center gap-1.5">
                         <ModeIcon className="h-4 w-4 text-slate-600" />
                         <span className="text-sm font-medium capitalize">
                           {entryCase.mode_of_transport}
@@ -485,42 +575,42 @@ export default async function CaseDetailPage({
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500">
+                      <p className="text-xs font-medium uppercase tracking-wider text-slate-400 mb-1">
                         Status
                       </p>
                       <Badge
-                        className={`mt-0.5 ${STATUS_COLORS[entryCase.status as CaseStatus]}`}
+                        className={STATUS_COLORS[entryCase.status as CaseStatus]}
                         variant="secondary"
                       >
                         {formatLabel(entryCase.status)}
                       </Badge>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500">
+                      <p className="text-xs font-medium uppercase tracking-wider text-slate-400 mb-1">
                         ETA
                       </p>
-                      <p className="text-sm mt-0.5">
+                      <p className="text-sm font-medium">
                         {formatDate(entryCase.eta)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500">
+                      <p className="text-xs font-medium uppercase tracking-wider text-slate-400 mb-1">
                         Actual Arrival
                       </p>
-                      <p className="text-sm mt-0.5">
+                      <p className="text-sm font-medium">
                         {formatDate(entryCase.actual_arrival)}
                       </p>
                     </div>
                   </div>
                   <div className="border-t pt-3">
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between items-center text-sm">
                       <span className="text-slate-500">Risk Score</span>
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1.5">
                         {(entryCase.risk_score ?? 0) >= 0.6 && (
                           <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
                         )}
                         <span
-                          className={`font-medium ${getRiskColor(entryCase.risk_score)}`}
+                          className={`font-semibold ${getRiskColor(entryCase.risk_score)}`}
                         >
                           {getRiskLabel(entryCase.risk_score)}
                           {entryCase.risk_score !== null &&
@@ -533,14 +623,16 @@ export default async function CaseDetailPage({
               </Card>
 
               {/* Client Info */}
-              <Card>
-                <CardHeader>
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <User className="h-4 w-4 text-slate-500" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-100">
+                      <User className="h-4 w-4 text-slate-600" />
+                    </div>
                     Client Info
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Client</span>
                     <span className="font-medium">
@@ -550,7 +642,7 @@ export default async function CaseDetailPage({
                   {client?.importer_of_record_number && (
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-500">IOR Number</span>
-                      <span className="font-mono text-xs">
+                      <span className="font-mono text-xs bg-slate-50 px-2 py-0.5 rounded">
                         {client.importer_of_record_number}
                       </span>
                     </div>
@@ -573,74 +665,115 @@ export default async function CaseDetailPage({
 
             {/* Right column */}
             <div className="space-y-6">
-              {/* Checklist card */}
-              <Card>
-                <CardHeader>
+              {/* Progress card */}
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <ListChecks className="h-4 w-4 text-slate-500" />
-                    Checklist
+                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-green-50">
+                      <ListChecks className="h-4 w-4 text-green-600" />
+                    </div>
+                    Progress
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-5">
                   {/* Documents progress */}
                   <div>
-                    <div className="flex items-center justify-between text-sm mb-1.5">
-                      <span className="text-slate-600 font-medium">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="text-slate-700 font-medium">
                         Documents
                       </span>
-                      <span className="text-slate-500">
-                        {requiredDocs.filter((d) => uploadedDocTypes.has(d)).length} / {requiredDocs.length}
+                      <span className="text-slate-500 text-xs font-medium">
+                        {docsUploaded} / {requiredDocs.length} uploaded
                       </span>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-blue-500 transition-all"
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          docProgress === 100 ? "bg-green-500" : "bg-blue-500"
+                        }`}
                         style={{ width: `${docProgress}%` }}
                       />
                     </div>
                   </div>
                   {/* Tasks progress */}
                   <div>
-                    <div className="flex items-center justify-between text-sm mb-1.5">
-                      <span className="text-slate-600 font-medium">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="text-slate-700 font-medium">
                         Tasks
                       </span>
-                      <span className="text-slate-500">
+                      <span className="text-slate-500 text-xs font-medium">
                         {completedTasks} / {tasks.length} done
                       </span>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-green-500 transition-all"
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          taskProgress === 100 ? "bg-green-500" : "bg-emerald-500"
+                        }`}
                         style={{ width: `${taskProgress}%` }}
                       />
-                    </div>
-                  </div>
-                  {/* Key dates */}
-                  <div className="border-t pt-3 space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
-                      <span className="text-slate-500">ETA:</span>
-                      <span className="font-medium">
-                        {formatDate(entryCase.eta)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
-                      <span className="text-slate-500">Arrival:</span>
-                      <span className="font-medium">
-                        {formatDate(entryCase.actual_arrival)}
-                      </span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Timeline card */}
-              <Card>
-                <CardHeader>
+              {/* Key Dates card */}
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <Activity className="h-4 w-4 text-slate-500" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-purple-50">
+                      <CalendarDays className="h-4 w-4 text-purple-600" />
+                    </div>
+                    Key Dates
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>ETA</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-medium">
+                        {formatDate(entryCase.eta)}
+                      </span>
+                      <span
+                        className={`ml-2 text-xs ${
+                          etaInfo.overdue ? "text-red-600 font-semibold" : "text-slate-400"
+                        }`}
+                      >
+                        ({etaInfo.text})
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <MapPin className="h-3.5 w-3.5" />
+                      <span>Arrival</span>
+                    </div>
+                    <span className="font-medium">
+                      {formatDate(entryCase.actual_arrival)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      <span>Created</span>
+                    </div>
+                    <span className="font-medium">
+                      {formatDate(entryCase.created_at)}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Timeline card */}
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50">
+                      <Activity className="h-4 w-4 text-indigo-600" />
+                    </div>
                     Timeline
                   </CardTitle>
                 </CardHeader>
