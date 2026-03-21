@@ -146,22 +146,27 @@ export default async function CasesPage({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Cases</h1>
-            <p className="text-sm text-muted-foreground">
-              {count ?? 0} total cases
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                Cases
+              </h1>
+              <Badge
+                variant="secondary"
+                className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600"
+              >
+                {count ?? 0}
+              </Badge>
+            </div>
+            <p className="mt-1 text-sm text-slate-500">
+              Manage and track customs entry cases
             </p>
           </div>
-          {(count ?? 0) > 0 && (
-            <Badge variant="outline" className="text-sm font-medium">
-              {count}
-            </Badge>
-          )}
         </div>
         <div className="flex items-center gap-3">
           <ViewToggle currentView={viewMode} />
-          <Button asChild className="gap-1.5">
+          <Button asChild className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-sm">
             <Link href="/cases/new">
               <Plus className="h-4 w-4" />
               New Case
@@ -197,9 +202,13 @@ export default async function CasesPage({
 
       {/* Pagination */}
       {totalPages > 1 && viewMode === "table" && (
-        <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm">
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
           <p className="text-sm text-slate-500">
-            Page {page} of {totalPages}
+            Page <span className="font-medium text-slate-700">{page}</span> of{" "}
+            <span className="font-medium text-slate-700">{totalPages}</span>
+            <span className="ml-2 text-slate-400">
+              ({count} total {count === 1 ? "case" : "cases"})
+            </span>
           </p>
           <div className="flex gap-2">
             {page > 1 && (

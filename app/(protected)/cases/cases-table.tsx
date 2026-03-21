@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { STATUS_COLORS, PRIORITY_COLORS } from "@/lib/types/database";
+import { PRIORITY_COLOR_MAP } from "@/lib/design/tokens";
 import type {
   CaseStatus,
   PriorityLevel,
@@ -49,6 +50,23 @@ function formatDate(dateStr: string | null): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatRelativeDate(dateStr: string | null): {
+  text: string;
+  isOverdue: boolean;
+} {
+  if (!dateStr) return { text: "\u2014", isOverdue: false };
+  const now = new Date();
+  const target = new Date(dateStr);
+  const diffMs = target.getTime() - now.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return { text: "Today", isOverdue: false };
+  if (diffDays === 1) return { text: "Tomorrow", isOverdue: false };
+  if (diffDays === -1) return { text: "Yesterday", isOverdue: true };
+  if (diffDays > 1) return { text: `in ${diffDays} days`, isOverdue: false };
+  return { text: `${Math.abs(diffDays)} days ago`, isOverdue: true };
 }
 
 function getRelation<T>(val: T | T[] | null): T | null {
@@ -96,26 +114,33 @@ export function CasesTable({
   }
 
   function SortHeader({ field, label }: { field: string; label: string }) {
+    const isActive = currentSort === field;
     return (
       <TableHead>
         <Button
           variant="ghost"
           size="sm"
-          className="-ml-3 font-medium text-slate-500"
+          className={`-ml-3 font-medium ${
+            isActive ? "text-slate-800" : "text-slate-500"
+          }`}
           onClick={() => toggleSort(field)}
         >
           {label}
-          <ArrowUpDown className="ml-1 h-3 w-3" />
+          <ArrowUpDown
+            className={`ml-1 h-3 w-3 ${
+              isActive ? "text-blue-600" : "text-slate-400"
+            }`}
+          />
         </Button>
       </TableHead>
     );
   }
 
   return (
-    <div className="rounded-xl bg-white shadow-sm overflow-hidden">
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <Table>
         <TableHeader>
-          <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+          <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 border-b border-slate-200">
             <SortHeader field="case_number" label="Case #" />
             <TableHead className="text-slate-500 font-medium">
               Client
@@ -135,11 +160,13 @@ export function CasesTable({
             <TableRow>
               <TableCell
                 colSpan={8}
-                className="text-center text-slate-500 py-12"
+                className="text-center text-slate-500 py-16"
               >
-                <p className="text-base font-medium">No cases found</p>
+                <p className="text-base font-medium text-slate-600">
+                  No cases found
+                </p>
                 <p className="text-sm text-slate-400 mt-1">
-                  Try adjusting your filters
+                  Try adjusting your filters or create a new case
                 </p>
               </TableCell>
             </TableRow>
@@ -148,45 +175,61 @@ export function CasesTable({
               const client = getRelation(c.client_account);
               const assignee = getRelation(c.assigned_user);
               const mode = MODE_LABELS[c.mode_of_transport];
+              const etaRelative = formatRelativeDate(c.eta);
+              const priorityDot = PRIORITY_COLOR_MAP[c.priority].dot;
+
               return (
                 <TableRow
                   key={c.id}
-                  className={`cursor-pointer h-14 transition-colors hover:bg-blue-50/40 ${
-                    idx % 2 === 1 ? "bg-slate-50/40" : ""
+                  className={`cursor-pointer transition-colors hover:bg-blue-50/30 border-b border-slate-100 last:border-b-0 ${
+                    idx % 2 === 1 ? "bg-slate-50/50" : ""
                   }`}
+                  style={{ minHeight: "52px" }}
                   onClick={() => router.push(`/cases/${c.id}`)}
                 >
-                  <TableCell className="font-mono text-sm font-semibold text-slate-900">
-                    {c.case_number}
+                  <TableCell className="py-3.5">
+                    <span className="font-mono text-sm font-semibold text-blue-600 hover:text-blue-800">
+                      {c.case_number}
+                    </span>
                   </TableCell>
-                  <TableCell className="text-sm font-medium text-slate-700">
+                  <TableCell className="py-3.5 text-sm font-medium text-slate-700">
                     {client?.name ?? "\u2014"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-3.5">
                     <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-slate-100 text-xs font-bold text-slate-600">
                       {mode.icon}
                     </span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-3.5">
                     <Badge
-                      className={STATUS_COLORS[c.status]}
+                      className={`${STATUS_COLORS[c.status]} rounded-full px-2.5 py-0.5 text-xs font-medium`}
                       variant="secondary"
                     >
                       {formatLabel(c.status)}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <Badge
-                      className={PRIORITY_COLORS[c.priority]}
-                      variant="secondary"
+                  <TableCell className="py-3.5">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`inline-block h-2 w-2 rounded-full ${priorityDot}`}
+                      />
+                      <span className="text-sm capitalize text-slate-600">
+                        {c.priority}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3.5">
+                    <span
+                      className={`text-sm ${
+                        etaRelative.isOverdue
+                          ? "font-medium text-red-600"
+                          : "text-slate-600"
+                      }`}
                     >
-                      {c.priority}
-                    </Badge>
+                      {etaRelative.text}
+                    </span>
                   </TableCell>
-                  <TableCell className="text-sm text-slate-600">
-                    {formatDate(c.eta)}
-                  </TableCell>
-                  <TableCell>
+                  <TableCell className="py-3.5">
                     {assignee ? (
                       <div className="flex items-center gap-2">
                         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
@@ -202,7 +245,7 @@ export function CasesTable({
                       </span>
                     )}
                   </TableCell>
-                  <TableCell className="text-xs text-slate-400">
+                  <TableCell className="py-3.5 text-xs text-slate-400">
                     {formatDate(c.updated_at)}
                   </TableCell>
                 </TableRow>
