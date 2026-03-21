@@ -156,10 +156,10 @@ export async function middleware(request: NextRequest) {
   // For public routes, allow access without checking session
   // This prevents redirect loops when cookies are malformed
   if (isPublicRoute) {
-    // Still try to check if user is logged in to redirect away from login
+    // Check if user is already logged in to redirect away from login
     try {
-      const { data } = await supabase.auth.getUser();
-      if (data.user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
         const url = request.nextUrl.clone();
         url.pathname = "/dashboard";
         return NextResponse.redirect(url);
@@ -171,15 +171,17 @@ export async function middleware(request: NextRequest) {
   }
 
   // For protected routes, check authentication
-  let user = null;
+  // Use getSession() instead of getUser() — it reads from the cookie
+  // directly without making an API call, which is more reliable in middleware
+  let hasSession = false;
   try {
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
+    const { data: { session } } = await supabase.auth.getSession();
+    hasSession = !!session?.user;
   } catch {
     // Malformed session cookie — treat as unauthenticated
   }
 
-  if (!user) {
+  if (!hasSession) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

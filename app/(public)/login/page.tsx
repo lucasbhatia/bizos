@@ -33,8 +33,8 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    // Full page reload ensures cookies are sent with the next request
+    window.location.href = "/dashboard";
   }
 
   return (
