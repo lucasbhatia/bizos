@@ -116,10 +116,11 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Public routes that don't require auth
+  // Routes that don't need middleware auth checks
   const publicRoutes = ["/login", "/signup", "/portal"];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
-    || pathname === "/";
+    || pathname === "/"
+    || pathname.startsWith("/api");
 
   // Apply security headers to all responses
   applySecurityHeaders(supabaseResponse);
@@ -180,6 +181,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/health).*)",
+    "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };
