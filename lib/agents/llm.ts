@@ -44,7 +44,8 @@ export async function callClaude(options: LLMOptions): Promise<LLMResponse> {
       });
 
       const textBlock = response.content.find((block) => block.type === 'text');
-      const content = textBlock?.type === 'text' ? textBlock.text : '';
+      const rawContent = textBlock?.type === 'text' ? textBlock.text : '';
+      const content = extractJSON(rawContent);
 
       return {
         content,
@@ -72,4 +73,32 @@ export async function callClaude(options: LLMOptions): Promise<LLMResponse> {
   }
 
   throw lastError ?? new Error('Claude API call failed after all retries');
+}
+
+/**
+ * Extract JSON from Claude's response, stripping markdown code fences if present.
+ * Claude often wraps JSON in ```json ... ``` blocks.
+ */
+function extractJSON(text: string): string {
+  const trimmed = text.trim();
+
+  // Match ```json ... ``` or ``` ... ```
+  const fenceMatch = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
+  if (fenceMatch) {
+    return fenceMatch[1].trim();
+  }
+
+  // If the text starts with { or [, it's already raw JSON
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    return trimmed;
+  }
+
+  // Try to find JSON object/array within the text
+  const jsonMatch = trimmed.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if (jsonMatch) {
+    return jsonMatch[1];
+  }
+
+  // Return as-is if no JSON found
+  return trimmed;
 }
