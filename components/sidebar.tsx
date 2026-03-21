@@ -40,7 +40,7 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   roles: UserRole[];
-  /** Optional badge count – wired up later via props/context */
+  /** Optional badge count -- wired up later via props/context */
   badge?: number;
 }
 
@@ -82,7 +82,7 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Collapse state — persisted in localStorage
+  // Collapse state -- persisted in localStorage
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -92,7 +92,7 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored === "true") setCollapsed(true);
     } catch {
-      // SSR or localStorage unavailable — ignore
+      // SSR or localStorage unavailable -- ignore
     }
   }, []);
 
@@ -131,15 +131,18 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
     return (
       <div className="flex h-full flex-col">
         {/* ---- Logo / Branding ---- */}
-        <div className="flex h-16 items-center gap-3 border-b border-white/10 px-4">
+        <div className="flex h-16 items-center gap-3 border-b border-white/[0.08] px-4">
           {/* Logo mark */}
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500 text-sm font-bold text-white">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-sm font-bold text-white shadow-lg shadow-blue-500/20">
             B
           </div>
           {!isCollapsed && (
             <div className="min-w-0">
-              <span className="text-base font-semibold tracking-tight text-white">
+              <span className="text-base font-bold tracking-tight text-white">
                 BizOS
+              </span>
+              <span className="ml-1.5 text-[10px] font-medium uppercase tracking-widest text-blue-400">
+                ops
               </span>
             </div>
           )}
@@ -147,8 +150,8 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
 
         {/* Tenant name */}
         {user.tenant && !isCollapsed && (
-          <div className="border-b border-white/10 px-4 py-2">
-            <p className="truncate text-xs text-slate-400">
+          <div className="border-b border-white/[0.06] px-4 py-2.5">
+            <p className="truncate text-[11px] font-medium uppercase tracking-wider text-slate-500">
               {user.tenant.name}
             </p>
           </div>
@@ -167,18 +170,24 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
                 onClick={() => {
                   if (isMobile) setMobileOpen(false);
                 }}
-                className={`group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150 ${
+                className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150 ${
                   isActive
-                    ? "bg-white/10 text-white"
-                    : "text-slate-300 hover:bg-white/5 hover:text-white"
+                    ? "bg-white/[0.08] text-white shadow-sm shadow-black/10"
+                    : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
                 } ${isCollapsed ? "justify-center" : ""}`}
               >
-                {/* Active indicator — left border */}
+                {/* Active indicator -- left border */}
                 {isActive && (
                   <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-blue-400" />
                 )}
 
-                <Icon className="h-5 w-5 shrink-0" />
+                <Icon
+                  className={`h-[18px] w-[18px] shrink-0 transition-colors duration-150 ${
+                    isActive
+                      ? "text-blue-400"
+                      : "text-slate-500 group-hover:text-slate-300"
+                  }`}
+                />
 
                 {!isCollapsed && (
                   <>
@@ -193,7 +202,7 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
 
                 {/* Badge dot when collapsed */}
                 {isCollapsed && item.badge !== undefined && item.badge > 0 && (
-                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
+                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-[#0F172A]" />
                 )}
               </Link>
             );
@@ -203,7 +212,10 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
               return (
                 <Tooltip key={item.href} delayDuration={0}>
                   <TooltipTrigger asChild>{link}</TooltipTrigger>
-                  <TooltipContent side="right" className="font-medium">
+                  <TooltipContent
+                    side="right"
+                    className="border-slate-700 bg-slate-800 font-medium text-white"
+                  >
                     {item.label}
                     {item.badge !== undefined && item.badge > 0 && (
                       <span className="ml-1.5 text-red-400">({item.badge})</span>
@@ -218,15 +230,15 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
         </nav>
 
         {/* ---- Bottom section ---- */}
-        <div className="border-t border-white/10 p-3">
+        <div className="border-t border-white/[0.08] p-3">
           {/* User row */}
           <div
-            className={`flex items-center gap-3 rounded-md px-2 py-2 ${
+            className={`flex items-center gap-3 rounded-lg px-2 py-2 ${
               isCollapsed ? "justify-center" : ""
             }`}
           >
             {/* Avatar */}
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/30 text-xs font-semibold text-blue-300">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-xs font-bold text-white shadow-sm">
               {getInitials(user.full_name)}
             </div>
 
@@ -235,7 +247,7 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
                 <p className="truncate text-sm font-medium text-white">
                   {user.full_name}
                 </p>
-                <span className="inline-block rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                <span className="inline-block rounded-md bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                   {roleLabel}
                 </span>
               </div>
@@ -248,21 +260,24 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
               <TooltipTrigger asChild>
                 <button
                   onClick={handleLogout}
-                  className="mt-1 flex w-full items-center justify-center rounded-md px-3 py-2 text-slate-400 transition-colors duration-150 hover:bg-white/5 hover:text-white"
+                  className="mt-1 flex w-full items-center justify-center rounded-lg px-3 py-2 text-slate-500 transition-all duration-150 hover:bg-white/[0.04] hover:text-slate-300"
                 >
-                  <LogOut className="h-5 w-5" />
+                  <LogOut className="h-[18px] w-[18px]" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="font-medium">
+              <TooltipContent
+                side="right"
+                className="border-slate-700 bg-slate-800 font-medium text-white"
+              >
                 Sign out
               </TooltipContent>
             </Tooltip>
           ) : (
             <button
               onClick={handleLogout}
-              className="mt-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 transition-colors duration-150 hover:bg-white/5 hover:text-white"
+              className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-500 transition-all duration-150 hover:bg-white/[0.04] hover:text-slate-300"
             >
-              <LogOut className="h-5 w-5 shrink-0" />
+              <LogOut className="h-[18px] w-[18px] shrink-0" />
               Sign out
             </button>
           )}
@@ -275,21 +290,24 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
                   <TooltipTrigger asChild>
                     <button
                       onClick={toggleCollapsed}
-                      className="mt-1 flex w-full items-center justify-center rounded-md px-3 py-2 text-slate-400 transition-colors duration-150 hover:bg-white/5 hover:text-white"
+                      className="mt-1 flex w-full items-center justify-center rounded-lg px-3 py-2 text-slate-500 transition-all duration-150 hover:bg-white/[0.04] hover:text-slate-300"
                     >
-                      <PanelLeftOpen className="h-5 w-5" />
+                      <PanelLeftOpen className="h-[18px] w-[18px]" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="right" className="font-medium">
+                  <TooltipContent
+                    side="right"
+                    className="border-slate-700 bg-slate-800 font-medium text-white"
+                  >
                     Expand sidebar
                   </TooltipContent>
                 </Tooltip>
               ) : (
                 <button
                   onClick={toggleCollapsed}
-                  className="mt-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 transition-colors duration-150 hover:bg-white/5 hover:text-white"
+                  className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-500 transition-all duration-150 hover:bg-white/[0.04] hover:text-slate-300"
                 >
-                  <PanelLeftClose className="h-5 w-5 shrink-0" />
+                  <PanelLeftClose className="h-[18px] w-[18px] shrink-0" />
                   Collapse
                 </button>
               )}
@@ -309,7 +327,7 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
       {/* Mobile hamburger button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed left-4 top-3 z-50 flex h-10 w-10 items-center justify-center rounded-md text-slate-700 hover:bg-slate-100 md:hidden"
+        className="fixed left-4 top-3 z-50 flex h-10 w-10 items-center justify-center rounded-lg text-slate-700 transition-colors duration-150 hover:bg-slate-100 md:hidden"
         aria-label={mobileOpen ? "Close menu" : "Open menu"}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -325,7 +343,7 @@ export function Sidebar({ user }: { user: UserWithTenant }) {
 
       {/* Mobile sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#0F172A] transition-transform duration-200 ease-in-out md:hidden ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#0F172A] shadow-2xl shadow-black/50 transition-transform duration-200 ease-in-out md:hidden ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

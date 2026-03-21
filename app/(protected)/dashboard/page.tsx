@@ -16,6 +16,8 @@ import {
   Clock,
   ExternalLink,
   User,
+  TrendingUp,
+  Activity,
 } from "lucide-react";
 
 function formatRelativeTime(dateStr: string): string {
@@ -30,38 +32,67 @@ function formatRelativeTime(dateStr: string): string {
   return "just now";
 }
 
+function formatStuckTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = (diffMs / 3600000).toFixed(1);
+  const diffDays = Math.floor(parseFloat(diffHours) / 24);
+
+  if (diffDays > 0) return `Stuck ${diffDays}d`;
+  return `Stuck ${diffHours}h`;
+}
+
 function formatStatus(status: string): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 const METRIC_CONFIG = [
   {
     label: "Active Cases",
+    subtitle: "In pipeline",
     icon: Briefcase,
     borderColor: "border-l-blue-500",
-    iconBg: "bg-blue-100",
+    iconBg: "bg-blue-50",
     iconColor: "text-blue-600",
+    iconRing: "ring-blue-100",
   },
   {
     label: "Due Today",
+    subtitle: "ETA arrivals",
     icon: CalendarClock,
     borderColor: "border-l-amber-500",
-    iconBg: "bg-amber-100",
+    iconBg: "bg-amber-50",
     iconColor: "text-amber-600",
+    iconRing: "ring-amber-100",
   },
   {
     label: "Missing Docs",
+    subtitle: "Awaiting upload",
     icon: FileWarning,
     borderColor: "border-l-orange-500",
-    iconBg: "bg-orange-100",
+    iconBg: "bg-orange-50",
     iconColor: "text-orange-600",
+    iconRing: "ring-orange-100",
   },
   {
     label: "Overdue Tasks",
+    subtitle: "Past deadline",
     icon: AlertTriangle,
     borderColor: "border-l-red-500",
-    iconBg: "bg-red-100",
+    iconBg: "bg-red-50",
     iconColor: "text-red-600",
+    iconRing: "ring-red-100",
   },
 ] as const;
 
@@ -169,6 +200,11 @@ export default async function DashboardPage() {
     1
   );
 
+  const totalCasesInPipeline = STATUS_ORDER.reduce(
+    (sum, s) => sum + (statusCounts[s] ?? 0),
+    0
+  );
+
   // Recent AI action logs
   const { data: aiActions } = await supabase
     .from("ai_action_logs")
@@ -182,34 +218,60 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-sm text-slate-500">
-          Welcome back, {user?.full_name}
-        </p>
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Welcome back, {user?.full_name}
+          </p>
+        </div>
+        <div className="hidden items-center gap-2 text-xs text-slate-400 sm:flex">
+          <Activity className="h-3.5 w-3.5" />
+          <span>
+            {new Date().toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+        </div>
       </div>
 
       {/* Top Metrics Bar */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {METRIC_CONFIG.map((metric, i) => {
           const Icon = metric.icon;
+          const value = metricValues[i];
+          const isAlert = i >= 2 && value > 0;
           return (
             <div
               key={metric.label}
-              className={`rounded-xl border-l-4 ${metric.borderColor} bg-white p-5 shadow-sm`}
+              className={`group relative overflow-hidden rounded-xl border-l-4 ${metric.borderColor} bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md`}
             >
-              <div className="flex items-center gap-4">
+              {/* Subtle gradient overlay */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white via-white to-slate-50/80" />
+
+              <div className="relative flex items-center gap-4">
                 <div
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${metric.iconBg}`}
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${metric.iconBg} ring-4 ${metric.iconRing}`}
                 >
                   <Icon className={`h-5 w-5 ${metric.iconColor}`} />
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-slate-900">
-                    {metricValues[i]}
+                  <p
+                    className={`text-3xl font-bold tracking-tight ${
+                      isAlert ? "text-red-600" : "text-slate-900"
+                    }`}
+                  >
+                    {value}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs font-medium text-slate-500">
                     {metric.label}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {metric.subtitle}
                   </p>
                 </div>
               </div>
@@ -222,26 +284,39 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Exception Stack (left 2/3) */}
         <div className="lg:col-span-2">
-          <div className="rounded-xl bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b px-6 py-4">
+          <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-semibold text-slate-900">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50">
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                </div>
+                <h2 className="text-base font-semibold text-slate-900">
                   Needs Your Attention
                 </h2>
                 {totalExceptions > 0 && (
-                  <Badge variant="destructive" className="text-xs">
+                  <Badge
+                    variant="destructive"
+                    className="h-5 min-w-[20px] rounded-full px-1.5 text-[11px] font-bold"
+                  >
                     {totalExceptions}
                   </Badge>
                 )}
               </div>
             </div>
-            <div className="divide-y px-2 py-2">
+            <div className="divide-y divide-slate-50 p-3">
               {totalExceptions === 0 ? (
-                <div className="flex items-center gap-3 px-4 py-8 justify-center">
-                  <CheckCircle2 className="h-6 w-6 text-green-500" />
-                  <p className="text-sm font-medium text-green-700">
-                    All clear — no exceptions
-                  </p>
+                <div className="flex items-center justify-center gap-3 px-4 py-10">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-50 ring-4 ring-green-50/50">
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-green-700">
+                      All clear
+                    </p>
+                    <p className="text-xs text-green-600/70">
+                      No exceptions require attention
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -253,36 +328,45 @@ export default async function DashboardPage() {
                       ? exc.assigned_user[0]?.full_name
                       : (exc.assigned_user as { full_name: string } | null)
                           ?.full_name;
-                    const isOverdue = exc.status === "hold";
-                    const stripeColor = isOverdue
+                    const isHold = exc.status === "hold";
+                    const stripeColor = isHold
                       ? "border-l-red-500"
                       : "border-l-amber-400";
                     return (
                       <div
                         key={exc.id}
-                        className={`flex items-center gap-4 border-l-4 ${stripeColor} rounded-lg px-4 py-3 mx-2 my-1 transition-colors hover:bg-slate-50`}
+                        className={`group flex items-center gap-4 border-l-4 ${stripeColor} mx-1 my-1 rounded-lg px-4 py-3 transition-all duration-150 hover:bg-slate-50/80 hover:shadow-sm`}
                       >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm font-semibold text-slate-900">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2.5">
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-bold text-slate-700">
                               {exc.case_number}
                             </span>
-                            <span className="font-medium text-sm text-slate-700">
+                            <span className="text-sm font-semibold text-slate-900">
                               {clientName ?? "Unknown client"}
                             </span>
                           </div>
-                          <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
-                            <span className="flex items-center gap-1">
+                          <div className="mt-1.5 flex items-center gap-3 text-xs text-slate-500">
+                            <span className="flex items-center gap-1 font-medium text-orange-600">
                               <Clock className="h-3 w-3" />
-                              {formatRelativeTime(exc.updated_at)}
+                              {formatStuckTime(exc.updated_at)}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {assigneeName ?? "Unassigned"}
-                            </span>
+                            {assigneeName && (
+                              <span className="flex items-center gap-1.5">
+                                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[9px] font-bold text-slate-600">
+                                  {getInitials(assigneeName)}
+                                </span>
+                                {assigneeName}
+                              </span>
+                            )}
+                            {!assigneeName && (
+                              <span className="italic text-slate-400">
+                                Unassigned
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex shrink-0 items-center gap-2">
                           <Badge
                             className={
                               STATUS_COLORS[exc.status as CaseStatus] ?? ""
@@ -305,10 +389,10 @@ export default async function DashboardPage() {
                             variant="ghost"
                             size="sm"
                             asChild
-                            className="text-blue-600 hover:text-blue-800"
+                            className="h-8 gap-1 text-xs text-blue-600 opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:text-blue-800"
                           >
                             <Link href={`/cases/${exc.id}`}>
-                              <ExternalLink className="mr-1 h-3 w-3" />
+                              <ExternalLink className="h-3 w-3" />
                               View
                             </Link>
                           </Button>
@@ -319,9 +403,11 @@ export default async function DashboardPage() {
 
                   {overdueTasks && overdueTasks.length > 0 && (
                     <>
-                      <div className="px-6 pt-3 pb-1">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-red-600">
+                      <div className="px-6 pb-1 pt-4">
+                        <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-red-500">
+                          <span className="h-px flex-1 bg-red-100" />
                           Overdue Tasks
+                          <span className="h-px flex-1 bg-red-100" />
                         </p>
                       </div>
                       {overdueTasks.map((task) => {
@@ -342,25 +428,37 @@ export default async function DashboardPage() {
                         return (
                           <div
                             key={task.id}
-                            className="flex items-center gap-4 border-l-4 border-l-red-500 rounded-lg px-4 py-3 mx-2 my-1 transition-colors hover:bg-red-50/50"
+                            className="group mx-1 my-1 flex items-center gap-4 rounded-lg border-l-4 border-l-red-500 px-4 py-3 transition-all duration-150 hover:bg-red-50/40 hover:shadow-sm"
                           >
-                            <div className="flex-1 min-w-0">
+                            <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium text-slate-900">
                                 {task.title}
                               </p>
                               <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
                                 {caseNumber && (
-                                  <span className="font-mono">
+                                  <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-600">
                                     {caseNumber}
                                   </span>
                                 )}
-                                <span className="flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  {assigneeName ?? "Unassigned"}
-                                </span>
+                                {assigneeName && (
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[9px] font-bold text-slate-600">
+                                      {getInitials(assigneeName)}
+                                    </span>
+                                    {assigneeName}
+                                  </span>
+                                )}
+                                {!assigneeName && (
+                                  <span className="italic text-slate-400">
+                                    Unassigned
+                                  </span>
+                                )}
                               </div>
                             </div>
-                            <Badge variant="destructive" className="text-xs">
+                            <Badge
+                              variant="destructive"
+                              className="shrink-0 text-xs font-semibold"
+                            >
                               Overdue{" "}
                               {task.due_at
                                 ? formatRelativeTime(task.due_at)
@@ -378,13 +476,23 @@ export default async function DashboardPage() {
         </div>
 
         {/* Cases by Stage (right 1/3) */}
-        <div className="rounded-xl bg-white shadow-sm">
-          <div className="border-b px-6 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Cases by Stage
-            </h2>
+        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                <TrendingUp className="h-4 w-4 text-blue-500" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Cases by Stage
+                </h2>
+                <p className="text-[11px] text-slate-400">
+                  {totalCasesInPipeline} total in pipeline
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="px-6 py-4 space-y-3">
+          <div className="space-y-2.5 px-6 py-5">
             {STATUS_ORDER.map((status) => {
               const count = statusCounts[status] ?? 0;
               const widthPercent = Math.max(
@@ -398,24 +506,29 @@ export default async function DashboardPage() {
                 <Link
                   key={status}
                   href={`/cases?status=${status}`}
-                  className="group block"
+                  className="group block rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-slate-50"
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
-                      {formatStatus(status)}
-                    </span>
+                  <div className="mb-1 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`h-2 w-2 rounded-full ${token.dot}`}
+                      />
+                      <span className="text-sm text-slate-600 transition-colors duration-150 group-hover:text-slate-900">
+                        {formatStatus(status)}
+                      </span>
+                    </div>
                     <span
-                      className={`text-sm font-semibold ${
-                        count > 0 ? token.text : "text-slate-400"
+                      className={`min-w-[24px] text-right text-sm font-bold tabular-nums ${
+                        count > 0 ? token.text : "text-slate-300"
                       }`}
                     >
                       {count}
                     </span>
                   </div>
-                  <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                     {count > 0 && (
                       <div
-                        className={`h-full rounded-full ${barColor} transition-all group-hover:opacity-80`}
+                        className={`h-full rounded-full ${barColor} transition-all duration-300 group-hover:opacity-80`}
                         style={{ width: `${widthPercent}%` }}
                       />
                     )}
@@ -424,7 +537,7 @@ export default async function DashboardPage() {
               );
             })}
             {Object.keys(statusCounts).length === 0 && (
-              <p className="text-sm text-slate-500 py-4 text-center">
+              <p className="py-6 text-center text-sm text-slate-400">
                 No active cases
               </p>
             )}

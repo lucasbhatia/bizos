@@ -15,10 +15,12 @@ export default async function ProtectedLayout({
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar user={user} />
-      <main className="flex-1 overflow-auto bg-slate-50 p-4 pb-20 sm:p-6 sm:pb-6">
-        {children}
+      <main className="flex-1 overflow-y-auto bg-slate-50/80 px-4 pb-20 pt-4 sm:px-6 sm:pb-8 sm:pt-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          {children}
+        </div>
       </main>
       <MobileNav userRole={user.role} />
     </div>
