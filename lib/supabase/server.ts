@@ -44,24 +44,19 @@ export function createServiceClient() {
 export async function getCurrentUser(): Promise<UserWithTenant | null> {
   const supabase = createClient();
 
-  // Try getUser() first (validates with Supabase Auth server)
-  // Fall back to getSession() if getUser() fails (reads from cookie directly)
+  // Use getSession() — reads directly from cookie, no API call
+  // This is reliable in server components where cookies are available
   let userId: string | null = null;
+  let userEmail: string | null = null;
+  let userRole: string = "viewer";
 
   try {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    userId = authUser?.id ?? null;
+    const { data: { session } } = await supabase.auth.getSession();
+    userId = session?.user?.id ?? null;
+    userEmail = session?.user?.email ?? null;
   } catch {
-    // getUser() failed — try getSession() as fallback
-  }
-
-  if (!userId) {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      userId = session?.user?.id ?? null;
-    } catch {
-      // Both failed
-    }
+    // Cookie unreadable
+    return null;
   }
 
   if (!userId) return null;
@@ -72,7 +67,22 @@ export async function getCurrentUser(): Promise<UserWithTenant | null> {
     .eq("id", userId)
     .single();
 
-  if (!profile) return null;
+  if (profile) {
+    return profile as unknown as UserWithTenant;
+  }
 
-  return profile as unknown as UserWithTenant;
+  // Profile not found in public.users — return a minimal user object
+  // This happens when auth.users exists but public.users row is missing
+  // (e.g., newly signed up user before profile creation)
+  return {
+    id: userId,
+    tenant_id: "",
+    email: userEmail ?? "",
+    full_name: userEmail?.split("@")[0] ?? "User",
+    role: userRole as UserWithTenant["role"],
+    is_licensed_broker: false,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
 }
