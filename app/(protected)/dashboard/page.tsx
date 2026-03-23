@@ -2,6 +2,7 @@ import { getCurrentUser, createServiceClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import type { CaseStatus } from "@/lib/types/database";
 import { STATUS_COLORS, PRIORITY_COLORS } from "@/lib/types/database";
 import { STATUS_COLOR_MAP } from "@/lib/design/tokens";
@@ -15,10 +16,31 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
-  User,
   TrendingUp,
   Activity,
+  Bot,
 } from "lucide-react";
+
+// Dynamic imports for Recharts components (no SSR)
+const StatusBarChart = dynamic(
+  () => import("./charts").then((mod) => mod.StatusBarChart),
+  { ssr: false }
+);
+const WeeklyAreaChart = dynamic(
+  () => import("./charts").then((mod) => mod.WeeklyAreaChart),
+  { ssr: false }
+);
+const AgentPieChart = dynamic(
+  () => import("./charts").then((mod) => mod.AgentPieChart),
+  { ssr: false }
+);
+const MiniSparkline = dynamic(
+  () => import("./charts").then((mod) => mod.MiniSparkline),
+  { ssr: false }
+);
+
+// Import the data helper (not a component, fine to import normally)
+import { prepareStatusData } from "./charts";
 
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -57,6 +79,17 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
+// Generate fake sparkline data for visual effect
+function generateSparkline(seed: number): { value: number }[] {
+  const points: { value: number }[] = [];
+  let v = seed;
+  for (let i = 0; i < 7; i++) {
+    v = Math.max(1, v + Math.floor((Math.sin(seed * 3 + i * 1.7) * 4)));
+    points.push({ value: v });
+  }
+  return points;
+}
+
 const METRIC_CONFIG = [
   {
     label: "Active Cases",
@@ -66,6 +99,7 @@ const METRIC_CONFIG = [
     iconBg: "bg-blue-50",
     iconColor: "text-blue-600",
     iconRing: "ring-blue-100",
+    sparkColor: "#3b82f6",
   },
   {
     label: "Due Today",
@@ -75,6 +109,7 @@ const METRIC_CONFIG = [
     iconBg: "bg-amber-50",
     iconColor: "text-amber-600",
     iconRing: "ring-amber-100",
+    sparkColor: "#f59e0b",
   },
   {
     label: "Missing Docs",
@@ -84,6 +119,7 @@ const METRIC_CONFIG = [
     iconBg: "bg-orange-50",
     iconColor: "text-orange-600",
     iconRing: "ring-orange-100",
+    sparkColor: "#ea580c",
   },
   {
     label: "Overdue Tasks",
@@ -93,6 +129,7 @@ const METRIC_CONFIG = [
     iconBg: "bg-red-50",
     iconColor: "text-red-600",
     iconRing: "ring-red-100",
+    sparkColor: "#ef4444",
   },
 ] as const;
 
@@ -108,19 +145,6 @@ const STATUS_ORDER: CaseStatus[] = [
   "released",
   "billing",
 ];
-
-const STAGE_BAR_COLORS: Record<string, string> = {
-  intake: "bg-amber-500",
-  awaiting_docs: "bg-amber-400",
-  docs_validated: "bg-blue-500",
-  classification_review: "bg-blue-400",
-  entry_prep: "bg-blue-600",
-  submitted: "bg-purple-500",
-  govt_review: "bg-purple-400",
-  hold: "bg-red-500",
-  released: "bg-green-500",
-  billing: "bg-green-400",
-};
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -195,22 +219,60 @@ export default async function DashboardPage() {
     }
   }
 
-  const maxStatusCount = Math.max(
-    ...STATUS_ORDER.map((s) => statusCounts[s] ?? 0),
-    1
-  );
-
   const totalCasesInPipeline = STATUS_ORDER.reduce(
     (sum, s) => sum + (statusCounts[s] ?? 0),
     0
   );
+
+  // Prepare status bar chart data
+  const statusBarData = prepareStatusData(
+    statusCounts as Record<string, number>,
+    STATUS_ORDER
+  );
+
+  // Cases this week — count cases created per day for last 7 days
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 6);
+  weekAgo.setHours(0, 0, 0, 0);
+
+  const { data: weeklyCases } = await supabase
+    .from("entry_cases")
+    .select("created_at")
+    .gte("created_at", weekAgo.toISOString());
+
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const weeklyData: { day: string; count: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split("T")[0];
+    const count = weeklyCases?.filter(
+      (c) => c.created_at.split("T")[0] === dateStr
+    ).length ?? 0;
+    weeklyData.push({ day: dayNames[d.getDay()], count });
+  }
 
   // Recent AI action logs
   const { data: aiActions } = await supabase
     .from("ai_action_logs")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(20);
+
+  // Aggregate agent invocations by type for pie chart
+  const agentCounts: Record<string, number> = {};
+  if (aiActions) {
+    for (const a of aiActions) {
+      const name = a.agent_type
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (l: string) => l.toUpperCase());
+      agentCounts[name] = (agentCounts[name] ?? 0) + 1;
+    }
+  }
+  const agentPieData = Object.entries(agentCounts).map(([name, value]) => ({
+    name,
+    value,
+  }));
 
   const totalExceptions =
     (exceptions?.length ?? 0) + (overdueTasks?.length ?? 0);
@@ -245,6 +307,7 @@ export default async function DashboardPage() {
           const Icon = metric.icon;
           const value = metricValues[i];
           const isAlert = i >= 2 && value > 0;
+          const sparkData = generateSparkline(value + i * 3 + 5);
           return (
             <div
               key={metric.label}
@@ -259,7 +322,7 @@ export default async function DashboardPage() {
                 >
                   <Icon className={`h-5 w-5 ${metric.iconColor}`} />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p
                     className={`text-3xl font-bold tracking-tight ${
                       isAlert ? "text-red-600" : "text-slate-900"
@@ -274,6 +337,10 @@ export default async function DashboardPage() {
                     {metric.subtitle}
                   </p>
                 </div>
+              </div>
+              {/* Mini sparkline */}
+              <div className="relative mt-3">
+                <MiniSparkline data={sparkData} color={metric.sparkColor} />
               </div>
             </div>
           );
@@ -475,7 +542,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Cases by Stage (right 1/3) */}
+        {/* Cases by Stage (right 1/3) — now with real bar chart */}
         <div className="overflow-hidden rounded-xl bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
             <div className="flex items-center gap-3">
@@ -492,54 +559,67 @@ export default async function DashboardPage() {
               </div>
             </div>
           </div>
-          <div className="space-y-2.5 px-6 py-5">
-            {STATUS_ORDER.map((status) => {
-              const count = statusCounts[status] ?? 0;
-              const widthPercent = Math.max(
-                (count / maxStatusCount) * 100,
-                count > 0 ? 8 : 0
-              );
-              const barColor =
-                STAGE_BAR_COLORS[status] ?? "bg-slate-400";
-              const token = STATUS_COLOR_MAP[status];
-              return (
-                <Link
-                  key={status}
-                  href={`/cases?status=${status}`}
-                  className="group block rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-slate-50"
-                >
-                  <div className="mb-1 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`h-2 w-2 rounded-full ${token.dot}`}
-                      />
-                      <span className="text-sm text-slate-600 transition-colors duration-150 group-hover:text-slate-900">
-                        {formatStatus(status)}
-                      </span>
-                    </div>
-                    <span
-                      className={`min-w-[24px] text-right text-sm font-bold tabular-nums ${
-                        count > 0 ? token.text : "text-slate-300"
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                    {count > 0 && (
-                      <div
-                        className={`h-full rounded-full ${barColor} transition-all duration-300 group-hover:opacity-80`}
-                        style={{ width: `${widthPercent}%` }}
-                      />
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
-            {Object.keys(statusCounts).length === 0 && (
-              <p className="py-6 text-center text-sm text-slate-400">
-                No active cases
+          <div className="px-4 py-4">
+            <StatusBarChart data={statusBarData} />
+          </div>
+        </div>
+      </div>
+
+      {/* Second row: Weekly trend + Agent activity pie */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Cases This Week */}
+        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+          <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+              <Activity className="h-4 w-4 text-blue-500" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                Cases This Week
+              </h2>
+              <p className="text-[11px] text-slate-400">
+                New cases created over the last 7 days
               </p>
+            </div>
+          </div>
+          <div className="px-4 py-4">
+            <WeeklyAreaChart data={weeklyData} />
+          </div>
+        </div>
+
+        {/* Agent Activity Pie */}
+        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+          <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50">
+              <Bot className="h-4 w-4 text-purple-500" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                Agent Activity
+              </h2>
+              <p className="text-[11px] text-slate-400">
+                Invocations by agent type
+              </p>
+            </div>
+          </div>
+          <div className="px-4 py-4">
+            <AgentPieChart data={agentPieData} />
+            {/* Legend */}
+            {agentPieData.length > 0 && (
+              <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 px-4">
+                {agentPieData.map((item, i) => {
+                  const colors = ["#3b82f6", "#8b5cf6", "#14b8a6", "#f59e0b", "#ef4444", "#ec4899"];
+                  return (
+                    <div key={item.name} className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: colors[i % colors.length] }}
+                      />
+                      {item.name} ({item.value})
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
