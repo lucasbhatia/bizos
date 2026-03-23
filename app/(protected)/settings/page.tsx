@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Settings, Mail, CheckCircle2, XCircle, Wifi, WifiOff } from "lucide-react";
 
 interface EmailStatus {
   connected: boolean;
@@ -108,55 +109,91 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-        <p className="text-sm text-slate-500">
-          Manage integrations and system configuration
-        </p>
+      {/* Page Header */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+          <Settings className="h-5 w-5 text-slate-700" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Settings</h1>
+          <p className="text-sm text-slate-500">
+            Manage integrations and system configuration
+          </p>
+        </div>
       </div>
 
+      {/* Flash Message */}
       {flashMessage && (
         <div
-          className={`rounded-md px-4 py-3 text-sm ${
+          className={`rounded-lg px-4 py-3 text-sm flex items-center justify-between ${
             flashMessage.type === "success"
               ? "bg-green-50 text-green-800 border border-green-200"
               : "bg-red-50 text-red-800 border border-red-200"
           }`}
         >
-          {flashMessage.text}
+          <div className="flex items-center gap-2">
+            {flashMessage.type === "success" ? (
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            ) : (
+              <XCircle className="h-4 w-4 text-red-600" />
+            )}
+            {flashMessage.text}
+          </div>
           <button
             onClick={() => setFlashMessage(null)}
-            className="ml-4 font-medium underline"
+            className="ml-4 font-medium underline text-xs"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            Email Integration
+      {/* Email Integration Card */}
+      <Card className="rounded-xl bg-white shadow-sm border">
+        <CardHeader className="p-5 pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                emailStatus?.connected ? "bg-green-100" : "bg-slate-100"
+              }`}>
+                <Mail className={`h-4 w-4 ${emailStatus?.connected ? "text-green-600" : "text-slate-500"}`} />
+              </div>
+              <div>
+                <CardTitle className="text-base">Email Integration</CardTitle>
+                <CardDescription className="text-xs mt-0.5">
+                  Connect Gmail to auto-process inbound emails
+                </CardDescription>
+              </div>
+            </div>
             {!loading && (
-              <Badge variant={emailStatus?.connected ? "default" : "secondary"}>
-                {emailStatus?.connected ? "Connected" : "Disconnected"}
+              <Badge className={`rounded-full ${
+                emailStatus?.connected
+                  ? "bg-green-100 text-green-700"
+                  : "bg-slate-100 text-slate-500"
+              }`}>
+                {emailStatus?.connected ? (
+                  <><Wifi className="h-3 w-3 mr-1" /> Connected</>
+                ) : (
+                  <><WifiOff className="h-3 w-3 mr-1" /> Disconnected</>
+                )}
               </Badge>
             )}
-          </CardTitle>
-          <CardDescription>
-            Connect your Gmail account to automatically process inbound emails
-            through the Intake Agent.
-          </CardDescription>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-5 pt-2">
           {loading ? (
-            <p className="text-sm text-slate-500">Loading status...</p>
+            <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500 text-center">
+              Loading status...
+            </div>
           ) : emailStatus?.connected ? (
             <>
-              <div className="rounded-md bg-slate-50 p-4 space-y-2">
+              <div className="rounded-lg bg-slate-50 p-4 space-y-2.5">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Status</span>
-                  <span className="font-medium text-green-700">Connected</span>
+                  <span className="font-medium text-green-700 flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
+                    Connected
+                  </span>
                 </div>
                 {emailStatus.lastSyncAt && (
                   <div className="flex justify-between text-sm">
@@ -175,14 +212,14 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex gap-3">
-                <Button onClick={handleSync} disabled={syncing}>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleSync} disabled={syncing}>
                   {syncing ? "Syncing..." : "Sync Now"}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={handleDisconnect}
                   disabled={disconnecting}
-                  className="text-red-600 hover:text-red-700"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
                   {disconnecting ? "Disconnecting..." : "Disconnect Gmail"}
                 </Button>
@@ -194,38 +231,39 @@ export default function SettingsPage() {
                 No Gmail account connected. Connect your Gmail to start
                 processing inbound emails automatically.
               </p>
-              <Button asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700" asChild>
                 <a href="/api/email/auth">Connect Gmail</a>
               </Button>
             </div>
           )}
 
+          {/* Sync Results Table */}
           {syncResults && syncResults.results.length > 0 && (
             <div className="mt-4 space-y-2">
               <h3 className="text-sm font-medium text-slate-700">
                 Sync Results ({syncResults.processed} processed)
               </h3>
-              <div className="max-h-64 overflow-y-auto rounded-md border">
+              <div className="max-h-64 overflow-y-auto rounded-xl border bg-white overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50">
                     <tr>
-                      <th className="px-3 py-2 text-left font-medium text-slate-600">
+                      <th className="px-3 py-2.5 text-left font-medium text-slate-600">
                         From
                       </th>
-                      <th className="px-3 py-2 text-left font-medium text-slate-600">
+                      <th className="px-3 py-2.5 text-left font-medium text-slate-600">
                         Subject
                       </th>
-                      <th className="px-3 py-2 text-left font-medium text-slate-600">
+                      <th className="px-3 py-2.5 text-left font-medium text-slate-600">
                         Status
                       </th>
-                      <th className="px-3 py-2 text-right font-medium text-slate-600">
+                      <th className="px-3 py-2.5 text-right font-medium text-slate-600">
                         Confidence
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {syncResults.results.map((r) => (
-                      <tr key={r.messageId}>
+                    {syncResults.results.map((r, idx) => (
+                      <tr key={r.messageId} className={`hover:bg-blue-50/30 ${idx % 2 === 1 ? "bg-slate-50/50" : ""}`}>
                         <td className="px-3 py-2 text-slate-700 truncate max-w-[160px]">
                           {r.from}
                         </td>
@@ -234,12 +272,11 @@ export default function SettingsPage() {
                         </td>
                         <td className="px-3 py-2">
                           <Badge
-                            variant={r.success ? "default" : "secondary"}
-                            className={
+                            className={`rounded-full ${
                               r.success
                                 ? "bg-green-100 text-green-800"
                                 : "bg-red-100 text-red-800"
-                            }
+                            }`}
                           >
                             {r.success ? "Processed" : "Failed"}
                           </Badge>

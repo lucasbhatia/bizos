@@ -37,6 +37,7 @@ import {
   Bot,
   Plus,
   ExternalLink,
+  ShieldCheck,
 } from "lucide-react";
 
 interface TenantStats {
@@ -136,7 +137,10 @@ export default function AdminDashboard() {
 
   if (error) {
     return (
-      <div className="flex h-64 items-center justify-center">
+      <div className="flex h-64 flex-col items-center justify-center gap-2">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+          <ShieldCheck className="h-5 w-5 text-red-500" />
+        </div>
         <p className="text-sm text-red-600">{error}</p>
       </div>
     );
@@ -148,18 +152,24 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Page Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Admin Dashboard
-          </h1>
-          <p className="text-sm text-slate-500">
-            Super-admin view across all tenants
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100">
+            <ShieldCheck className="h-5 w-5 text-red-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Admin Dashboard
+            </h1>
+            <p className="text-sm text-slate-500">
+              Super-admin view across all tenants
+            </p>
+          </div>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="bg-blue-600 hover:bg-blue-700">
               <Plus className="mr-2 h-4 w-4" />
               New Tenant
             </Button>
@@ -176,6 +186,7 @@ export default function AdminDashboard() {
                 <Label htmlFor="tenant-name">Tenant Name</Label>
                 <Input
                   id="tenant-name"
+                  className="h-10 rounded-lg focus:ring-2 focus:ring-blue-500"
                   value={newTenantName}
                   onChange={(e) => setNewTenantName(e.target.value)}
                   placeholder="Acme Brokerage"
@@ -185,6 +196,7 @@ export default function AdminDashboard() {
                 <Label htmlFor="tenant-slug">Slug</Label>
                 <Input
                   id="tenant-slug"
+                  className="h-10 rounded-lg focus:ring-2 focus:ring-blue-500"
                   value={newTenantSlug}
                   onChange={(e) => setNewTenantSlug(e.target.value)}
                   placeholder="acme-brokerage"
@@ -194,6 +206,7 @@ export default function AdminDashboard() {
                 <Label htmlFor="admin-name">Admin Full Name</Label>
                 <Input
                   id="admin-name"
+                  className="h-10 rounded-lg focus:ring-2 focus:ring-blue-500"
                   value={adminName}
                   onChange={(e) => setAdminName(e.target.value)}
                   placeholder="Jane Doe"
@@ -204,6 +217,7 @@ export default function AdminDashboard() {
                 <Input
                   id="admin-email"
                   type="email"
+                  className="h-10 rounded-lg focus:ring-2 focus:ring-blue-500"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   placeholder="admin@acme.com"
@@ -214,6 +228,7 @@ export default function AdminDashboard() {
                 <Input
                   id="admin-password"
                   type="password"
+                  className="h-10 rounded-lg focus:ring-2 focus:ring-blue-500"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   placeholder="Min 8 characters"
@@ -229,6 +244,7 @@ export default function AdminDashboard() {
                 Cancel
               </Button>
               <Button
+                className="bg-blue-600 hover:bg-blue-700"
                 onClick={handleCreateTenant}
                 disabled={
                   creating ||
@@ -247,44 +263,52 @@ export default function AdminDashboard() {
 
       {/* Cross-tenant analytics */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+        <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-blue-500">
+          <CardHeader className="flex flex-row items-center justify-between p-5 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-500">
               Total Tenants
             </CardTitle>
-            <Building2 className="h-4 w-4 text-slate-500" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+              <Building2 className="h-4 w-4 text-blue-500" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{tenants.length}</p>
+          <CardContent className="px-5 pb-5">
+            <p className="text-3xl font-bold text-slate-900">{tenants.length}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-slate-500" />
+        <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-emerald-500">
+          <CardHeader className="flex flex-row items-center justify-between p-5 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-500">Total Users</CardTitle>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+              <Users className="h-4 w-4 text-emerald-500" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{analytics.total_users}</p>
+          <CardContent className="px-5 pb-5">
+            <p className="text-3xl font-bold text-slate-900">{analytics.total_users}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Cases</CardTitle>
-            <Briefcase className="h-4 w-4 text-slate-500" />
+        <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-amber-500">
+          <CardHeader className="flex flex-row items-center justify-between p-5 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-500">Total Cases</CardTitle>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
+              <Briefcase className="h-4 w-4 text-amber-500" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{analytics.total_cases}</p>
+          <CardContent className="px-5 pb-5">
+            <p className="text-3xl font-bold text-slate-900">{analytics.total_cases}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+        <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-violet-500">
+          <CardHeader className="flex flex-row items-center justify-between p-5 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-500">
               Agent Invocations
             </CardTitle>
-            <Bot className="h-4 w-4 text-slate-500" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
+              <Bot className="h-4 w-4 text-violet-500" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
+          <CardContent className="px-5 pb-5">
+            <p className="text-3xl font-bold text-slate-900">
               {analytics.total_agent_invocations}
             </p>
           </CardContent>
@@ -292,17 +316,17 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tenant list */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Tenants</CardTitle>
+      <Card className="rounded-xl bg-white shadow-sm border overflow-hidden">
+        <CardHeader className="p-5 pb-3">
+          <CardTitle className="text-base font-semibold text-slate-800">All Tenants</CardTitle>
           <CardDescription>
             Manage tenants across the platform
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-slate-50">
                 <TableHead>Name</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead className="text-right">Users</TableHead>
@@ -316,33 +340,39 @@ export default function AdminDashboard() {
                 <TableRow>
                   <TableCell
                     colSpan={6}
-                    className="text-center text-slate-500"
+                    className="text-center py-12"
                   >
-                    No tenants found
+                    <div className="flex flex-col items-center">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 mb-3">
+                        <Building2 className="h-5 w-5 text-slate-400" />
+                      </div>
+                      <p className="text-sm text-slate-500">No tenants found</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
-                tenants.map((tenant) => (
-                  <TableRow key={tenant.id}>
-                    <TableCell className="font-medium">
+                tenants.map((tenant, idx) => (
+                  <TableRow key={tenant.id} className={`hover:bg-blue-50/30 ${idx % 2 === 1 ? "bg-slate-50/50" : ""}`}>
+                    <TableCell className="font-medium text-slate-800">
                       {tenant.name}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{tenant.slug}</Badge>
+                      <Badge variant="secondary" className="rounded-full font-mono text-xs">{tenant.slug}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right font-medium">
                       {tenant.user_count}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right font-medium">
                       {tenant.case_count}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-slate-500 text-sm">
                       {new Date(tenant.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="hover:bg-blue-50"
                         onClick={() =>
                           router.push(`/admin/playbook?tenant=${tenant.id}`)
                         }

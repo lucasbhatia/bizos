@@ -15,6 +15,20 @@ import {
 import type { CaseStatus, UserRole } from "@/lib/types/database";
 import { STATUS_COLORS } from "@/lib/types/database";
 import { GenerateBriefButton } from "./generate-brief-button";
+import {
+  BarChart3,
+  Briefcase,
+  CalendarDays,
+  Clock,
+  TrendingUp,
+  DollarSign,
+  Bot,
+  FileCheck,
+  Ship,
+  Plane,
+  Truck,
+  TrainFront,
+} from "lucide-react";
 
 const EXECUTIVE_ROLES: UserRole[] = ["admin", "ops_manager", "broker_lead"];
 
@@ -36,6 +50,13 @@ function formatDuration(ms: number): string {
   return `${hours}h`;
 }
 
+const TRANSPORT_ICONS: Record<string, typeof Ship> = {
+  ocean: Ship,
+  air: Plane,
+  truck: Truck,
+  rail: TrainFront,
+};
+
 function BarChart({
   data,
   maxValue,
@@ -53,11 +74,11 @@ function BarChart({
           <span className="w-32 text-xs text-slate-600 truncate text-right">
             {item.label}
           </span>
-          <div className="flex-1 h-6 bg-slate-100 rounded overflow-hidden">
+          <div className="flex-1 h-6 bg-slate-100 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded ${colorClass ?? "bg-blue-500"}`}
+              className={`h-full rounded-full transition-all ${colorClass ?? "bg-blue-500"}`}
               style={{
-                width: `${Math.max((item.value / safeMax) * 100, 1)}%`,
+                width: `${Math.max((item.value / safeMax) * 100, 2)}%`,
               }}
             />
           </div>
@@ -168,7 +189,7 @@ export default async function ReportsPage() {
   }
 
   // ============================================================================
-  // Trends — Cases per week (last 8 weeks)
+  // Trends -- Cases per week (last 8 weeks)
   // ============================================================================
 
   const eightWeeksAgo = new Date(
@@ -342,14 +363,20 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Page Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Executive Reports
-          </h1>
-          <p className="text-sm text-slate-500">
-            Portfolio metrics, trends, and agent performance
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100">
+            <BarChart3 className="h-5 w-5 text-indigo-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Executive Reports
+            </h1>
+            <p className="text-sm text-slate-500">
+              Portfolio metrics, trends, and agent performance
+            </p>
+          </div>
         </div>
         <GenerateBriefButton userRole={user.role} />
       </div>
@@ -359,36 +386,45 @@ export default async function ReportsPage() {
       {/* ================================================================== */}
 
       <div>
-        <h2 className="text-lg font-semibold text-slate-800 mb-3">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
           Portfolio Metrics
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium text-slate-500">
-                Total Cases (All Time)
-              </p>
-              <p className="text-3xl font-bold text-slate-900">{totalCases}</p>
+          <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-slate-400">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500">Total Cases</p>
+                <Briefcase className="h-4 w-4 text-slate-400" />
+              </div>
+              <p className="text-3xl font-bold text-slate-900 mt-1">{totalCases}</p>
+              <p className="text-xs text-slate-400 mt-1">All time</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium text-slate-500">This Month</p>
-              <p className="text-3xl font-bold text-blue-600">{monthCases}</p>
+          <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-blue-500">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500">This Month</p>
+                <CalendarDays className="h-4 w-4 text-blue-400" />
+              </div>
+              <p className="text-3xl font-bold text-blue-600 mt-1">{monthCases}</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium text-slate-500">This Week</p>
-              <p className="text-3xl font-bold text-blue-600">{weekCases}</p>
+          <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-blue-500">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500">This Week</p>
+                <TrendingUp className="h-4 w-4 text-blue-400" />
+              </div>
+              <p className="text-3xl font-bold text-blue-600 mt-1">{weekCases}</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium text-slate-500">
-                Avg Case Lifecycle
-              </p>
-              <p className="text-3xl font-bold text-slate-900">
+          <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-violet-500">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500">Avg Lifecycle</p>
+                <Clock className="h-4 w-4 text-violet-400" />
+              </div>
+              <p className="text-3xl font-bold text-slate-900 mt-1">
                 {avgLifecycleMs > 0 ? formatDuration(avgLifecycleMs) : "N/A"}
               </p>
             </CardContent>
@@ -396,15 +432,16 @@ export default async function ReportsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Cases by Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              Cases by Status Distribution
+        <Card className="rounded-xl bg-white shadow-sm border">
+          <CardHeader className="p-5 pb-3">
+            <CardTitle className="text-base font-semibold text-slate-800">
+              Cases by Status
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-5 pt-0">
             {statusBarData.length > 0 ? (
               <BarChart
                 data={statusBarData}
@@ -418,11 +455,11 @@ export default async function ReportsPage() {
         </Card>
 
         {/* Cases by Client (Top 5) */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Top 5 Clients by Cases</CardTitle>
+        <Card className="rounded-xl bg-white shadow-sm border">
+          <CardHeader className="p-5 pb-3">
+            <CardTitle className="text-base font-semibold text-slate-800">Top 5 Clients</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-5 pt-0">
             {topClients.length > 0 ? (
               <BarChart
                 data={topClients.map((c) => ({
@@ -440,25 +477,31 @@ export default async function ReportsPage() {
       </div>
 
       {/* Transport Mode Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
+      <Card className="rounded-xl bg-white shadow-sm border">
+        <CardHeader className="p-5 pb-3">
+          <CardTitle className="text-base font-semibold text-slate-800">
             Cases by Transport Mode
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-5 pt-0">
           <div className="flex flex-wrap gap-4">
-            {Object.entries(modeCounts).map(([mode, count]) => (
-              <div
-                key={mode}
-                className="flex items-center gap-2 rounded-lg border p-3"
-              >
-                <Badge variant="secondary" className="capitalize">
-                  {mode}
-                </Badge>
-                <span className="text-lg font-semibold">{count}</span>
-              </div>
-            ))}
+            {Object.entries(modeCounts).map(([mode, count]) => {
+              const ModeIcon = TRANSPORT_ICONS[mode] ?? Ship;
+              return (
+                <div
+                  key={mode}
+                  className="flex items-center gap-3 rounded-xl border bg-slate-50/50 p-4 hover:shadow-sm transition-shadow"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100">
+                    <ModeIcon className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 capitalize">{mode}</p>
+                    <p className="text-lg font-bold text-slate-900">{count}</p>
+                  </div>
+                </div>
+              );
+            })}
             {Object.keys(modeCounts).length === 0 && (
               <p className="text-sm text-slate-500">No transport data</p>
             )}
@@ -471,15 +514,15 @@ export default async function ReportsPage() {
       {/* ================================================================== */}
 
       <div>
-        <h2 className="text-lg font-semibold text-slate-800 mb-3">Trends</h2>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Cases Created Per Week (Last 8 Weeks)
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Trends</h2>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card className="rounded-xl bg-white shadow-sm border">
+            <CardHeader className="p-5 pb-3">
+              <CardTitle className="text-base font-semibold text-slate-800">
+                Cases Per Week (Last 8 Weeks)
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-5 pt-0">
               <BarChart
                 data={weekBuckets}
                 maxValue={maxWeeklyCount}
@@ -488,17 +531,20 @@ export default async function ReportsPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Document Parsing Success Rate
-              </CardTitle>
+          <Card className="rounded-xl bg-white shadow-sm border">
+            <CardHeader className="p-5 pb-3">
+              <div className="flex items-center gap-2">
+                <FileCheck className="h-4 w-4 text-green-500" />
+                <CardTitle className="text-base font-semibold text-slate-800">
+                  Document Parsing Success
+                </CardTitle>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-5 pt-0">
               <div className="flex items-center gap-4">
-                <div className="flex-1 h-8 bg-slate-100 rounded overflow-hidden">
+                <div className="flex-1 h-8 bg-slate-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-green-500 rounded"
+                    className="h-full bg-green-500 rounded-full transition-all"
                     style={{ width: `${parseSuccessRate}%` }}
                   />
                 </div>
@@ -521,67 +567,69 @@ export default async function ReportsPage() {
 
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-slate-800">
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
             Agent Performance
           </h2>
           <Link href="/reports/agents">
-            <Button variant="outline" size="sm">
-              View Detailed Agent Metrics
+            <Button variant="outline" size="sm" className="rounded-lg">
+              View Detailed Metrics
             </Button>
           </Link>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-4">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium text-slate-500">
-                Total Invocations
-              </p>
-              <p className="text-3xl font-bold text-slate-900">
+          <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-slate-400">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500">Total Invocations</p>
+                <Bot className="h-4 w-4 text-slate-400" />
+              </div>
+              <p className="text-3xl font-bold text-slate-900 mt-1">
                 {totalInvocations}
               </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium text-slate-500">
-                Acceptance Rate
-              </p>
-              <p className="text-3xl font-bold text-green-600">
+          <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-green-500">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500">Acceptance Rate</p>
+              </div>
+              <p className="text-3xl font-bold text-green-600 mt-1">
                 {acceptanceRate}
               </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium text-slate-500">
-                Avg Confidence
-              </p>
-              <p className="text-3xl font-bold text-blue-600">
+          <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-blue-500">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500">Avg Confidence</p>
+              </div>
+              <p className="text-3xl font-bold text-blue-600 mt-1">
                 {avgConfidence}
               </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium text-slate-500">
-                Agents Active
-              </p>
-              <p className="text-3xl font-bold text-slate-900">
+          <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-violet-500">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500">Agents Active</p>
+              </div>
+              <p className="text-3xl font-bold text-slate-900 mt-1">
                 {Object.keys(agentBreakdown).length}
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Agent Breakdown</CardTitle>
+        {/* Agent Breakdown Table */}
+        <Card className="rounded-xl bg-white shadow-sm border overflow-hidden">
+          <CardHeader className="p-5 pb-3">
+            <CardTitle className="text-base font-semibold text-slate-800">Agent Breakdown</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {Object.keys(agentBreakdown).length > 0 ? (
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="bg-slate-50">
                     <TableHead>Agent</TableHead>
                     <TableHead className="text-right">Invocations</TableHead>
                     <TableHead className="text-right">Avg Confidence</TableHead>
@@ -593,8 +641,8 @@ export default async function ReportsPage() {
                   {Object.entries(agentBreakdown)
                     .sort((a, b) => b[1].invocations - a[1].invocations)
                     .map(([agentType, stats]) => (
-                      <TableRow key={agentType}>
-                        <TableCell className="font-medium">
+                      <TableRow key={agentType} className="hover:bg-blue-50/30">
+                        <TableCell className="font-medium text-slate-800">
                           {formatStatus(agentType)}
                         </TableCell>
                         <TableCell className="text-right">
@@ -609,16 +657,14 @@ export default async function ReportsPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <Badge
-                            variant="secondary"
-                            className="bg-green-100 text-green-800"
+                            className="rounded-full bg-green-100 text-green-800"
                           >
                             {stats.accepted}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <Badge
-                            variant="secondary"
-                            className="bg-red-100 text-red-800"
+                            className="rounded-full bg-red-100 text-red-800"
                           >
                             {stats.rejected}
                           </Badge>
@@ -628,9 +674,12 @@ export default async function ReportsPage() {
                 </TableBody>
               </Table>
             ) : (
-              <p className="text-sm text-slate-500">
-                No agent activity recorded yet
-              </p>
+              <div className="flex flex-col items-center py-12">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 mb-3">
+                  <Bot className="h-5 w-5 text-slate-400" />
+                </div>
+                <p className="text-sm text-slate-500">No agent activity recorded yet</p>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -641,42 +690,41 @@ export default async function ReportsPage() {
       {/* ================================================================== */}
 
       <div>
-        <h2 className="text-lg font-semibold text-slate-800 mb-3">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
           Financial Summary
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium text-slate-500">
-                Total Invoiced
-              </p>
-              <p className="text-3xl font-bold text-slate-900">
+          <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-slate-400">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500">Total Invoiced</p>
+                <DollarSign className="h-4 w-4 text-slate-400" />
+              </div>
+              <p className="text-3xl font-bold text-slate-900 mt-1">
                 {formatCurrency(totalInvoiced)}
               </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
+          <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-yellow-500">
+            <CardContent className="p-5">
               <p className="text-sm font-medium text-slate-500">Outstanding</p>
-              <p className="text-3xl font-bold text-yellow-600">
+              <p className="text-3xl font-bold text-yellow-600 mt-1">
                 {formatCurrency(totalOutstanding)}
               </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
+          <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-green-500">
+            <CardContent className="p-5">
               <p className="text-sm font-medium text-slate-500">Paid</p>
-              <p className="text-3xl font-bold text-green-600">
+              <p className="text-3xl font-bold text-green-600 mt-1">
                 {formatCurrency(totalPaid)}
               </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium text-slate-500">
-                Avg Invoice Value
-              </p>
-              <p className="text-3xl font-bold text-slate-900">
+          <Card className="rounded-xl bg-white shadow-sm border border-l-4 border-l-blue-500">
+            <CardContent className="p-5">
+              <p className="text-sm font-medium text-slate-500">Avg Invoice</p>
+              <p className="text-3xl font-bold text-slate-900 mt-1">
                 {formatCurrency(avgInvoiceValue)}
               </p>
             </CardContent>

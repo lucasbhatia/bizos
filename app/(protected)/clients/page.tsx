@@ -2,7 +2,7 @@ import { getCurrentUser, createServiceClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Building2, Phone, Mail } from "lucide-react";
+import { Users, Building2, Phone, Mail, Briefcase } from "lucide-react";
 
 export default async function ClientsPage() {
   const user = await getCurrentUser();
@@ -45,13 +45,26 @@ export default async function ClientsPage() {
     contactMap.set(contact.client_account_id, list);
   }
 
+  const activeCount = (clients ?? []).filter((c) => c.is_active).length;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Clients</h1>
-        <p className="text-sm text-slate-500">{(clients ?? []).length} client accounts</p>
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+            <Users className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Clients</h1>
+            <p className="text-sm text-slate-500">
+              {(clients ?? []).length} client accounts &middot; {activeCount} active
+            </p>
+          </div>
+        </div>
       </div>
 
+      {/* Client Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {(clients ?? []).map((client) => {
           const clientContacts = contactMap.get(client.id) ?? [];
@@ -59,41 +72,52 @@ export default async function ClientsPage() {
           const primaryContact = clientContacts.find((c) => c.is_primary) ?? clientContacts[0];
 
           return (
-            <Card key={client.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
+            <Card
+              key={client.id}
+              className={`rounded-xl bg-white shadow-sm border hover:shadow-md transition-shadow border-l-4 ${
+                client.is_active ? "border-l-emerald-500" : "border-l-slate-300"
+              }`}
+            >
+              <CardHeader className="pb-2 p-5">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">{client.name}</CardTitle>
-                  <Badge variant={client.is_active ? "default" : "secondary"}>
+                  <CardTitle className="text-base font-semibold text-slate-900">{client.name}</CardTitle>
+                  <Badge
+                    className={`rounded-full ${
+                      client.is_active
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
                     {client.is_active ? "Active" : "Inactive"}
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 p-5 pt-0">
                 {client.importer_of_record_number && (
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <Building2 className="h-4 w-4 text-slate-400" />
-                    IOR: {client.importer_of_record_number}
+                    <span>IOR: {client.importer_of_record_number}</span>
                   </div>
                 )}
 
                 <div className="flex items-center gap-2 text-sm">
-                  <Users className="h-4 w-4 text-slate-400" />
-                  <span className="text-blue-600 font-medium">{activeCases} active cases</span>
+                  <Briefcase className="h-4 w-4 text-blue-400" />
+                  <span className="text-blue-600 font-medium">{activeCases} active case{activeCases !== 1 ? "s" : ""}</span>
                 </div>
 
                 {primaryContact && (
-                  <div className="border-t pt-2 space-y-1">
-                    <p className="text-xs text-slate-400 uppercase font-medium">Primary Contact</p>
-                    <p className="text-sm font-medium">{primaryContact.name}</p>
+                  <div className="border-t pt-3 space-y-1.5">
+                    <p className="text-xs text-slate-400 uppercase font-semibold tracking-wider">Primary Contact</p>
+                    <p className="text-sm font-medium text-slate-800">{primaryContact.name}</p>
                     {primaryContact.email && (
-                      <div className="flex items-center gap-1 text-xs text-slate-500">
-                        <Mail className="h-3 w-3" />
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                        <Mail className="h-3 w-3 text-slate-400" />
                         {primaryContact.email}
                       </div>
                     )}
                     {primaryContact.phone && (
-                      <div className="flex items-center gap-1 text-xs text-slate-500">
-                        <Phone className="h-3 w-3" />
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                        <Phone className="h-3 w-3 text-slate-400" />
                         {primaryContact.phone}
                       </div>
                     )}
@@ -101,8 +125,8 @@ export default async function ClientsPage() {
                 )}
 
                 {client.sop_notes && (
-                  <div className="border-t pt-2">
-                    <p className="text-xs text-slate-400 uppercase font-medium">SOP Notes</p>
+                  <div className="border-t pt-3">
+                    <p className="text-xs text-slate-400 uppercase font-semibold tracking-wider">SOP Notes</p>
                     <p className="text-xs text-slate-600 mt-1 line-clamp-2">{client.sop_notes}</p>
                   </div>
                 )}
@@ -112,13 +136,15 @@ export default async function ClientsPage() {
         })}
       </div>
 
+      {/* Empty State */}
       {(clients ?? []).length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center text-slate-400">
-            <Users className="h-8 w-8 mx-auto mb-2" />
-            No clients yet
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 mb-3">
+            <Users className="h-6 w-6 text-slate-400" />
+          </div>
+          <p className="text-sm font-medium text-slate-600">No clients yet</p>
+          <p className="text-xs text-slate-400 mt-1">Client accounts will appear here once created</p>
+        </div>
       )}
     </div>
   );
