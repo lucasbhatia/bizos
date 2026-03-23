@@ -9,6 +9,7 @@ import type { TaskStatus, PriorityLevel } from "@/lib/types/database";
 import { TaskFilters } from "./task-filters";
 import { CreateTaskDialog } from "./create-task-dialog";
 import { TaskActions } from "./task-actions";
+import { CheckCircle2 } from "lucide-react";
 
 interface SearchParams {
   view?: string;
@@ -303,12 +304,15 @@ export default async function TasksPage({
             );
           })
         ) : (
-          <div className="rounded-xl border border-slate-200 bg-white py-16 text-center shadow-sm">
-            <p className="text-sm font-medium text-slate-600">
-              No tasks found
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Adjust filters or create a new task
+          <div className="rounded-xl border border-slate-200 bg-white py-20 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
+              <CheckCircle2 className="h-8 w-8 text-green-500" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-700">
+              All caught up!
+            </h3>
+            <p className="mx-auto mt-1.5 max-w-sm text-sm text-slate-400">
+              No tasks assigned to you right now
             </p>
           </div>
         )}

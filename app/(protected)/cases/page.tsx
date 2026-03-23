@@ -8,7 +8,8 @@ import { CasesFilters } from "./cases-filters";
 import { CasesTable } from "./cases-table";
 import { KanbanView } from "./kanban-view";
 import { ViewToggle } from "./view-toggle";
-import { Plus } from "lucide-react";
+import { StatusGuide } from "@/components/status-guide";
+import { Plus, Briefcase } from "lucide-react";
 
 interface SearchParams {
   status?: string;
@@ -189,8 +190,29 @@ export default async function CasesPage({
         activeFilters={activeFilters}
       />
 
+      {/* Status Guide */}
+      <StatusGuide />
+
       {/* Content */}
-      {viewMode === "kanban" ? (
+      {(cases ?? []).length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white py-20 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+            <Briefcase className="h-8 w-8 text-slate-400" />
+          </div>
+          <h3 className="text-base font-semibold text-slate-700">
+            No cases yet
+          </h3>
+          <p className="mx-auto mt-1.5 max-w-sm text-sm text-slate-400">
+            Create your first customs entry case to get started
+          </p>
+          <Button asChild className="mt-5 gap-2 bg-blue-600 hover:bg-blue-700 shadow-sm">
+            <Link href="/cases/new">
+              <Plus className="h-4 w-4" />
+              Create Case
+            </Link>
+          </Button>
+        </div>
+      ) : viewMode === "kanban" ? (
         <KanbanView cases={cases ?? []} />
       ) : (
         <CasesTable

@@ -8,6 +8,7 @@ import { STATUS_COLORS, PRIORITY_COLORS } from "@/lib/types/database";
 import { STATUS_COLOR_MAP } from "@/lib/design/tokens";
 import { OpsCheckButton } from "./ops-check-button";
 import { AgentActivityFeed } from "./agent-activity-feed";
+import { WelcomeBanner } from "./welcome-banner";
 import {
   Briefcase,
   CalendarClock,
@@ -297,6 +298,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Welcome Banner */}
+      <WelcomeBanner />
+
       {/* Header */}
       <div className="flex items-end justify-between">
         <div>
