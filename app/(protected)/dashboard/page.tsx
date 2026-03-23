@@ -39,8 +39,26 @@ const MiniSparkline = dynamic(
   { ssr: false }
 );
 
-// Import the data helper (not a component, fine to import normally)
-import { prepareStatusData } from "./charts";
+// Status chart colors (duplicated from charts.tsx to avoid "use client" import)
+const STATUS_CHART_COLORS: Record<string, string> = {
+  intake: "#f59e0b", awaiting_docs: "#fbbf24", docs_validated: "#3b82f6",
+  classification_review: "#60a5fa", entry_prep: "#2563eb", submitted: "#a78bfa",
+  govt_review: "#8b5cf6", hold: "#ef4444", released: "#10b981", billing: "#34d399",
+};
+
+function formatStatusLabel(s: string): string {
+  return s.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+function prepareStatusData(statusCounts: Record<string, number>, statusOrder: string[]) {
+  return statusOrder
+    .filter((s) => (statusCounts[s] ?? 0) > 0)
+    .map((s) => ({
+      name: formatStatusLabel(s),
+      count: statusCounts[s] ?? 0,
+      fill: STATUS_CHART_COLORS[s] ?? "#94a3b8",
+    }));
+}
 
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr);
